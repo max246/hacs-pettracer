@@ -169,9 +169,9 @@ class PetTracerApi:
         
         # Update local device cache
         for collar in collars:
-            _LOGGER.debug(f"Collar parsing {collar}")
+
             collar_id = str(collar.get("id"))
-            self._devices[collar_id] = collar_id
+            self._devices[collar_id] = collar
         
         return collars
 
@@ -194,6 +194,7 @@ class PetTracerApi:
     async def get_device_data(self, device_id: str) -> dict[str, Any]:
         """Get all data for a device including signal and location."""
         device = self._devices.get(device_id, {})
+
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
         
         result = {
@@ -272,11 +273,10 @@ class PetTracerApi:
     async def get_all_device_data(self) -> dict[str, dict[str, Any]]:
         """Get all data for all devices."""
         devices = await self.get_devices()
-        _LOGGER.debug(f"Collars parsing in all {devices}")
         all_data = {}
         
         for device in devices:
-            _LOGGER.debug(f"Collar parsing in all {device}")
+
             device_id = str(device.get("id"))
             try:
                 device_data = await self.get_device_data(device_id)
