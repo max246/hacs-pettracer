@@ -101,7 +101,7 @@ class PetTracerApi:
         try:
             async with session.post(
                 f"{API_URL}{ENDPOINT_LOGIN}",
-                json={"email": self._email, "password": self._password},
+                json={"login": self._email, "password": self._password},
                 headers={"Content-Type": "application/json"},
             ) as response:
                 if response.status == 401:
