@@ -8,9 +8,11 @@ WEBSOCKET_URL = "https://pt.pettracer.com/sc"
 
 # API Endpoints
 ENDPOINT_LOGIN = "/user/login"
-ENDPOINT_USER_INFO = "/user/info"
+ENDPOINT_USER_INFO = "/user/info" # Apprently not used!
+ENDPOINT_CAT_COLLARS = "/map/getccs"
 ENDPOINT_CC_LIST = "/user/details"  # Gets list of command centers (trackers)
-ENDPOINT_CC_FIFO = "/cc/{cc_id}/fifo"
+ENDPOINT_CC_FIFO = "/cc/{cc_id}/fifo" # Apprently not used!
+ENDPOINT_CC_INFO = "/map/getccinfo" 
 
 # STOMP Destinations
 STOMP_QUEUE_MESSAGES = "/user/queue/messages"

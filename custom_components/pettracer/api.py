@@ -13,8 +13,8 @@ from .const import (
     API_URL,
     WEBSOCKET_URL,
     ENDPOINT_LOGIN,
-    ENDPOINT_USER_INFO,
-    ENDPOINT_CC_FIFO,
+    ENDPOINT_CAT_COLLARS,
+    ENDPOINT_CC_INFO,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,7 +99,6 @@ class PetTracerApi:
         session = await self._ensure_session()
         
         try:
-            _LOGGER.debug("Doing a login...")
             async with session.post(
                 f"{API_URL}{ENDPOINT_LOGIN}",
                 json={"login": self._email, "password": self._password},
@@ -108,10 +107,9 @@ class PetTracerApi:
                 if response.status == 401:
                     raise PetTracerAuthError("Invalid credentials")
                 if response.status != 200:
-                    _LOGGER.debug(f"Error {response}")
                     raise PetTracerApiError(f"Login failed with status {response.status}")
                 
-                _LOGGER.debug("Login is good!")
+
                 data = await response.json()
                 self._token = data.get("access_token")
                 expires_str = data.get("expires")
@@ -140,8 +138,8 @@ class PetTracerApi:
             "Content-Type": "application/json",
         }
 
-    async def get_user_info(self) -> dict[str, Any]:
-        """Get user information including device list."""
+    async def get_cat_collars(self) -> dict[str, Any]:
+        """Get cat collars info."""
         await self._ensure_authenticated()
         session = await self._ensure_session()
         
@@ -158,13 +156,13 @@ class PetTracerApi:
 
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
-        user_info = await self.get_user_info()
-        devices = user_info.get("ccs", [])
+        user_info = await self.get_cat_collars()
+        collars = user_info.get("ccs", [])
         
         # Update local device cache
-        for device in devices:
-            device_id = str(device.get("id"))
-            self._devices[device_id] = device
+        for collar in collars:
+            collar_id = str(collar.get("id"))
+            self._devices[collar_id] = collar_id
         
         return devices
 
@@ -172,11 +170,11 @@ class PetTracerApi:
         """Get FIFO data for a device (latest positions and signal)."""
         await self._ensure_authenticated()
         session = await self._ensure_session()
+       
         
-        endpoint = ENDPOINT_CC_FIFO.format(cc_id=device_id)
-        
-        async with session.get(
-            f"{API_URL}{endpoint}",
+        async with session.post(
+            f"{API_URL}{ENDPOINT_CC_INFO}",
+            json={"devId": device_id},
             headers=self._get_auth_headers(),
         ) as response:
             if response.status != 200:
@@ -216,34 +214,36 @@ class PetTracerApi:
         
         # Get latest FIFO data for most recent signal
         try:
-            fifo_data = await self.get_device_fifo(device_id)
-            
-            # Extract signal and position from FIFO data
-            if fifo_data and isinstance(fifo_data, list) and len(fifo_data) > 0:
-                latest = fifo_data[0]
-                
-                # Signal from receivedBy
-                received_by = latest.get("receivedBy", [])
-                if received_by:
-                    raw_rssi = received_by[0].get("rssi", 0)
-                    dbm = format_rssi(raw_rssi)
-                    percent = rssi_to_percent(dbm)
+            device_info = await self.get_device_fifo(device_id)
+
+            if device_info and "fifo" in device_info:
+
+                fifo_data = device_info["fifo"]            
+                # Extract signal and position from FIFO data
+                if isinstance(fifo_data, list) and len(fifo_data) > 0:
+                    latest = fifo_data[0]
                     
-                    result["rssi_raw"] = raw_rssi
-                    result["rssi_dbm"] = dbm
-                    result["signal_percent"] = percent
-                    result["signal_level"] = get_signal_level(percent)
-                
-                # Position from positions array
-                positions = latest.get("positions", [])
-                if positions:
-                    pos = positions[0]
-                    result["latitude"] = pos.get("lat")
-                    result["longitude"] = pos.get("lng")
-                
-                # Update timestamp
-                if latest.get("telegram", {}).get("timeDb"):
-                    result["last_update"] = latest["telegram"]["timeDb"]
+                    # Signal from receivedBy
+                    received_by = latest.get("receivedBy", [])
+                    if received_by:
+                        raw_rssi = received_by[0].get("rssi", 0)
+                        dbm = format_rssi(raw_rssi)
+                        percent = rssi_to_percent(dbm)
+                        
+                        result["rssi_raw"] = raw_rssi
+                        result["rssi_dbm"] = dbm
+                        result["signal_percent"] = percent
+                        result["signal_level"] = get_signal_level(percent)
+                    
+                    # Position from last position
+                    telegram = latest.get("telegram", {})
+                    if telegram:
+                        result["latitude"] = telegram.get("latitude")
+                        result["longitude"] = telegram.get("longitude")
+                    
+                        # Update timestamp
+                        if telegram.get("timeDb"):
+                            result["last_update"] = telegram["timeDb"]
                     
         except Exception as err:
             _LOGGER.warning("Failed to get FIFO data for %s: %s", device_id, err)
