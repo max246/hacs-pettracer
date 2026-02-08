@@ -170,7 +170,7 @@ class PetTracerApi:
             collar_id = str(collar.get("id"))
             self._devices[collar_id] = collar_id
         
-        return devices
+        return collars
 
     async def get_device_fifo(self, device_id: str) -> dict[str, Any]:
         """Get FIFO data for a device (latest positions and signal)."""
