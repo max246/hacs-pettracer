@@ -37,9 +37,11 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from PetTracer API."""
+        _LOGGER.debug("Fetching data for coordinator")
         try:
             # Get all device data (signal + location)
             all_data = await self.api.get_all_device_data()
+            _LOGGER.debug(f"Fetched {all_data}")
             
             # Update local device cache
             self.devices = all_data

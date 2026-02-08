@@ -26,6 +26,9 @@ async def async_setup_entry(
     coordinator: PetTracerCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     
     entities: list[TrackerEntity] = []
+
+    _LOGGER.debug(f"coordinato {coordinator}")
+    _LOGGER.debug(f"coordinato {coordinator.data}")
     
     for device_id, device_data in coordinator.data.items():
         entities.append(PetTracerDeviceTracker(coordinator, device_id, device_data))
