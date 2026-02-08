@@ -136,6 +136,8 @@ class PetTracerApi:
         return {
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
+            "Referer": "https://portal.pettracer.com/en/dashboard",
+            "Host": "portal.pettracer.com"
         }
 
     async def get_cat_collars(self) -> dict[str, Any]:
@@ -143,16 +145,21 @@ class PetTracerApi:
         await self._ensure_authenticated()
         session = await self._ensure_session()
         
-        async with session.get(
-            f"{API_URL}{ENDPOINT_CAT_COLLARS}",
-            headers=self._get_auth_headers(),
-        ) as response:
-            if response.status != 200:
-                _LOGGER.debug(f"Error {response}")
-                raise PetTracerApiError(f"Failed to get user info: {response.status}")
+        try:
+            async with session.get(
+                f"{API_URL}{ENDPOINT_CAT_COLLARS}",
+                headers=self._get_auth_headers(),
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to get user info: {response.status}")
+                
+                self._user_data = await response.json()
+                return self._user_data
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrive collars")
             
-            self._user_data = await response.json()
-            return self._user_data
 
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
