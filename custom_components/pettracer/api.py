@@ -107,6 +107,7 @@ class PetTracerApi:
                 if response.status == 401:
                     raise PetTracerAuthError("Invalid credentials")
                 if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
                     raise PetTracerApiError(f"Login failed with status {response.status}")
                 
                 data = await response.json()
@@ -122,6 +123,7 @@ class PetTracerApi:
                 return True
                 
         except aiohttp.ClientError as err:
+            _LOGGER.debug(f"Error {err}")
             raise PetTracerApiError(f"Connection error: {err}") from err
 
     async def _ensure_authenticated(self) -> None:
@@ -146,6 +148,7 @@ class PetTracerApi:
             headers=self._get_auth_headers(),
         ) as response:
             if response.status != 200:
+                _LOGGER.debug(f"Error {response}")
                 raise PetTracerApiError(f"Failed to get user info: {response.status}")
             
             self._user_data = await response.json()
