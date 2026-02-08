@@ -49,8 +49,10 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return all_data
             
         except PetTracerApiError as err:
+            _LOGGER.debug(f"Error api  {err}")
             raise UpdateFailed(f"Error fetching PetTracer data: {err}") from err
         except Exception as err:
+            _LOGGER.debug(f"Error exce  {err}")
             raise UpdateFailed(f"Unexpected error: {err}") from err
 
     def get_device_data(self, device_id: str) -> dict[str, Any] | None:
