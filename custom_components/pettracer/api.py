@@ -99,6 +99,7 @@ class PetTracerApi:
         session = await self._ensure_session()
         
         try:
+            _LOGGER.debug("Doing a login...")
             async with session.post(
                 f"{API_URL}{ENDPOINT_LOGIN}",
                 json={"login": self._email, "password": self._password},
@@ -110,6 +111,7 @@ class PetTracerApi:
                     _LOGGER.debug(f"Error {response}")
                     raise PetTracerApiError(f"Login failed with status {response.status}")
                 
+                _LOGGER.debug("Login is good!")
                 data = await response.json()
                 self._token = data.get("access_token")
                 expires_str = data.get("expires")
