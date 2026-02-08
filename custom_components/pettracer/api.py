@@ -144,7 +144,7 @@ class PetTracerApi:
         session = await self._ensure_session()
         
         async with session.get(
-            f"{API_URL}{ENDPOINT_USER_INFO}",
+            f"{API_URL}{ENDPOINT_CAT_COLLARS}",
             headers=self._get_auth_headers(),
         ) as response:
             if response.status != 200:
@@ -156,8 +156,7 @@ class PetTracerApi:
 
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
-        user_info = await self.get_cat_collars()
-        collars = user_info.get("ccs", [])
+        collars = await self.get_cat_collars()
         
         # Update local device cache
         for collar in collars:
