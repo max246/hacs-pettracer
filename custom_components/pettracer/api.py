@@ -282,6 +282,7 @@ class PetTracerApi:
                 device_data = await self.get_device_data(device_id)
                 all_data[device_id] = device_data
             except Exception as err:
+                _LOGGER.debug("Detailed traceback for Pettrace login:", exc_info=True)
                 _LOGGER.exception("Failed to get data for device %s: %s", device_id, err)
         
         return all_data
