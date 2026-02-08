@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to PetTracer",
+        "description": "Enter your PetTracer account credentials.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Unable to connect to PetTracer servers",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This account is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "signal_strength": {
+        "name": "Signal Strength"
+      },
+      "signal_dbm": {
+        "name": "Signal dBm"
+      },
+      "signal_level": {
+        "name": "Signal Level"
+      }
+    }
+  }
+}
