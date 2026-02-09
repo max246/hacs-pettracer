@@ -4,10 +4,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
+import re
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
 import aiohttp
+import websockets
 
 from .const import (
     API_URL,
@@ -15,6 +18,8 @@ from .const import (
     ENDPOINT_LOGIN,
     ENDPOINT_CAT_COLLARS,
     ENDPOINT_CC_INFO,
+    STOMP_QUEUE_MESSAGES,
+    STOMP_QUEUE_PORTAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +79,12 @@ class PetTracerApi:
         self._user_data: dict[str, Any] = {}
         self._devices: dict[str, dict[str, Any]] = {}
         self._callbacks: list[Callable[[dict[str, Any]], None]] = []
+        
+        # WebSocket/SockJS/STOMP connection
+        self._ws: websockets.WebSocketClientProtocol | None = None
+        self._ws_task: asyncio.Task | None = None
+        self._ws_running = False
+        self._stomp_session_id: str | None = None
 
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Ensure we have an aiohttp session."""
@@ -83,7 +94,8 @@ class PetTracerApi:
         return self._session
 
     async def close(self) -> None:
-        """Close the session."""
+        """Close the session and WebSocket connection."""
+        await self.disconnect_websocket()
         if self._own_session and self._session:
             await self._session.close()
 
@@ -303,3 +315,264 @@ class PetTracerApi:
                 callback(data)
             except Exception as err:
                 _LOGGER.error("Callback error: %s", err)
+
+    async def connect_websocket(self) -> None:
+        """Connect to PetTracer SockJS/STOMP WebSocket for real-time updates."""
+        if self._ws_running:
+            _LOGGER.debug("WebSocket already running")
+            return
+        
+        await self._ensure_authenticated()
+        
+        self._ws_running = True
+        self._ws_task = asyncio.create_task(self._websocket_loop())
+        _LOGGER.info("WebSocket connection task started")
+
+    async def disconnect_websocket(self) -> None:
+        """Disconnect from WebSocket."""
+        self._ws_running = False
+        
+        if self._ws:
+            try:
+                await self._ws.close()
+            except Exception as err:
+                _LOGGER.debug("Error closing WebSocket: %s", err)
+            self._ws = None
+        
+        if self._ws_task:
+            self._ws_task.cancel()
+            try:
+                await self._ws_task
+            except asyncio.CancelledError:
+                pass
+            self._ws_task = None
+        
+        _LOGGER.info("WebSocket disconnected")
+
+    async def _websocket_loop(self) -> None:
+        """Main WebSocket connection loop with auto-reconnect."""
+        reconnect_delay = 5
+        max_reconnect_delay = 300  # 5 minutes
+        
+        while self._ws_running:
+            try:
+                await self._websocket_handler()
+            except asyncio.CancelledError:
+                _LOGGER.debug("WebSocket task cancelled")
+                break
+            except Exception as err:
+                _LOGGER.warning(
+                    "WebSocket disconnected: %s. Reconnecting in %s seconds...",
+                    err,
+                    reconnect_delay,
+                )
+                
+                if self._ws_running:
+                    await asyncio.sleep(reconnect_delay)
+                    reconnect_delay = min(reconnect_delay * 2, max_reconnect_delay)
+                else:
+                    break
+            else:
+                reconnect_delay = 5
+
+    async def _websocket_handler(self) -> None:
+        """Handle SockJS/STOMP WebSocket connection and messages."""
+        # Generate random server ID (3 digits)
+        server_id = random.randint(100, 999)
+        # Generate random session ID (8 characters)
+        session_id = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=8))
+        
+        # SockJS WebSocket URL: wss://host/sc/{server}/{session}/websocket?access_token=...
+        ws_url = f"{WEBSOCKET_URL}/sc/{server_id}/{session_id}/websocket?access_token={self._token}"
+        
+        _LOGGER.debug("Connecting to SockJS WebSocket: %s", ws_url.replace(self._token, "***"))
+        
+        async with websockets.connect(ws_url) as websocket:
+            self._ws = websocket
+            _LOGGER.info("SockJS WebSocket connected")
+            
+            # SockJS sends open frame: o
+            open_frame = await websocket.recv()
+            _LOGGER.debug("Received SockJS open frame: %s", open_frame)
+            
+            if open_frame != "o":
+                _LOGGER.warning("Unexpected SockJS open frame: %s", open_frame)
+                return
+            
+            # Send STOMP CONNECT frame
+            await self._send_stomp_connect(websocket)
+            
+            # Listen for messages
+            async for message in websocket:
+                try:
+                    await self._parse_sockjs_message(message)
+                except Exception as err:
+                    _LOGGER.error("Error parsing message: %s", err)
+
+    async def _send_stomp_connect(self, websocket) -> None:
+        """Send STOMP CONNECT frame over SockJS."""
+        # STOMP CONNECT frame
+        stomp_frame = (
+            f"CONNECT\n"
+            f"accept-version:1.1,1.0\n"
+            f"heart-beat:10000,10000\n"
+            f"access_token:{self._token}\n"
+            f"\n"
+            f"\x00"
+        )
+        
+        # Wrap in SockJS send frame: ["..."]
+        sockjs_frame = json.dumps([stomp_frame])
+        
+        _LOGGER.debug("Sending STOMP CONNECT")
+        await websocket.send(sockjs_frame)
+
+    async def _send_stomp_subscribe(self, websocket, destination: str, sub_id: str) -> None:
+        """Send STOMP SUBSCRIBE frame."""
+        stomp_frame = (
+            f"SUBSCRIBE\n"
+            f"id:{sub_id}\n"
+            f"destination:{destination}\n"
+            f"ack:auto\n"
+            f"\n"
+            f"\x00"
+        )
+        
+        sockjs_frame = json.dumps([stomp_frame])
+        
+        _LOGGER.debug("Subscribing to %s", destination)
+        await websocket.send(sockjs_frame)
+
+    async def _parse_sockjs_message(self, raw_message: str) -> None:
+        """Parse SockJS frame and extract STOMP messages."""
+        _LOGGER.debug("Raw SockJS message: %s", raw_message[:200])
+        
+        if not raw_message:
+            return
+        
+        frame_type = raw_message[0]
+        
+        if frame_type == "h":
+            # Heartbeat
+            _LOGGER.debug("Received heartbeat")
+            return
+        
+        if frame_type == "c":
+            # Close frame
+            _LOGGER.warning("Received close frame: %s", raw_message)
+            return
+        
+        if frame_type == "a":
+            # Array of messages: a["message1","message2"]
+            try:
+                messages_json = raw_message[1:]  # Remove 'a' prefix
+                messages = json.loads(messages_json)
+                
+                for msg in messages:
+                    await self._parse_stomp_frame(msg)
+                    
+            except json.JSONDecodeError as err:
+                _LOGGER.error("Failed to parse SockJS array: %s", err)
+
+    async def _parse_stomp_frame(self, frame_str: str) -> None:
+        """Parse STOMP frame and extract message body."""
+        _LOGGER.debug("Parsing STOMP frame (first 500 chars): %s", frame_str[:500])
+        
+        # STOMP frame format:
+        # COMMAND\n
+        # header1:value1\n
+        # header2:value2\n
+        # \n
+        # body\x00
+        
+        if not frame_str:
+            return
+        
+        # Check frame type
+        if frame_str.startswith("CONNECTED"):
+            _LOGGER.info("STOMP CONNECTED")
+            # Subscribe to topics after connection
+            if self._ws:
+                await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_MESSAGES, "sub-0")
+                await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_PORTAL, "sub-1")
+            return
+        
+        if frame_str.startswith("MESSAGE"):
+            # Extract JSON body from STOMP MESSAGE frame
+            # Find the blank line that separates headers from body
+            try:
+                # Split into lines
+                lines = frame_str.split("\n")
+                
+                # Find empty line (separates headers from body)
+                body_start_idx = None
+                for i, line in enumerate(lines):
+                    if not line.strip():
+                        body_start_idx = i + 1
+                        break
+                
+                if body_start_idx is not None:
+                    # Join remaining lines as body
+                    body = "\n".join(lines[body_start_idx:])
+                    # Remove null terminator
+                    body = body.rstrip("\x00")
+                    
+                    # Parse JSON
+                    data = json.loads(body)
+                    await self._handle_device_update(data)
+                else:
+                    _LOGGER.warning("No body found in STOMP MESSAGE")
+                    
+            except json.JSONDecodeError as err:
+                _LOGGER.error("Failed to parse MESSAGE body as JSON: %s", err)
+            except Exception as err:
+                _LOGGER.error("Error parsing STOMP MESSAGE: %s", err)
+        
+        elif frame_str.startswith("ERROR"):
+            _LOGGER.error("STOMP ERROR: %s", frame_str)
+
+    async def _handle_device_update(self, data: dict[str, Any]) -> None:
+        """Handle device update from STOMP message."""
+        _LOGGER.debug("Device update received: %s", json.dumps(data, indent=2))
+        
+        # Extract device ID
+        device_id = str(data.get("id", ""))
+        
+        if not device_id:
+            _LOGGER.debug("No device ID in update")
+            return
+        
+        # Update device cache
+        if device_id in self._devices:
+            device = self._devices[device_id]
+            
+            # Update location from lastPos
+            if "lastPos" in data:
+                last_pos = data["lastPos"]
+                device["lastPos"] = {
+                    "lat": last_pos.get("posLat"),
+                    "lng": last_pos.get("posLong"),
+                    "timeDb": last_pos.get("timeDb")
+                }
+                _LOGGER.info("Updated location for device %s", device_id)
+            
+            # Update signal from lastRssi
+            if "lastRssi" in data:
+                device["lastRssi"] = data["lastRssi"]
+                _LOGGER.info("Updated signal for device %s: %s dBm", device_id, data["lastRssi"])
+            
+            # Update battery from accuWarn
+            if "accuWarn" in data:
+                device["accuWarn"] = data["accuWarn"]
+                _LOGGER.info("Updated battery for device %s: %s", device_id, data["accuWarn"])
+            
+            # Update entire FIFO data if present
+            if "fiFo" in data:
+                device["fifo"] = data["fiFo"]
+        
+        # Notify callbacks
+        self._notify_callbacks({
+            "device_id": device_id,
+            "update_type": "websocket",
+            "data": data,
+        })

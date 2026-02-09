@@ -4,7 +4,7 @@ DOMAIN = "pettracer"
 
 # API URLs
 API_URL = "https://portal.pettracer.com/api"
-WEBSOCKET_URL = "https://pt.pettracer.com/sc"
+WEBSOCKET_URL = "wss://pt.pettracer.com"
 
 # API Endpoints
 ENDPOINT_LOGIN = "/user/login"

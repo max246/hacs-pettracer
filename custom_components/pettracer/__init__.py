@@ -33,6 +33,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create coordinator
     coordinator = PetTracerCoordinator(hass, api, entry)
     
+    # Fetch initial data
+    await coordinator.async_config_entry_first_refresh()
+    
+    # Start WebSocket for real-time updates
+    await coordinator.start_websocket()
+    
     # Store for platforms
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
@@ -43,11 +49,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Set up platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
+    _LOGGER.info("PetTracer integration setup complete with WebSocket support")
+    
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    data = hass.data[DOMAIN][entry.entry_id]
+    coordinator: PetTracerCoordinator = data["coordinator"]
+    
+    # Stop WebSocket connection
+    await coordinator.stop_websocket()
+    
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     
     if unload_ok:
