@@ -31,4 +31,5 @@ SIGNAL_LEVEL_FAIR = 30       # > 30%
 SIGNAL_LEVEL_POOR = 5        # > 5%
 
 # Update interval for polling fallback (seconds)
-UPDATE_INTERVAL = 60
+# No longer used - all updates come via WebSocket after initial data fetch
+# UPDATE_INTERVAL = 60

@@ -203,12 +203,18 @@ class PetTracerApi:
             
             return await response.json()
 
-    async def get_device_data(self, device_id: str) -> dict[str, Any]:
-        """Get all data for a device including signal and location."""
+    async def get_device_data(self, device_id: str, use_cache_only: bool = False) -> dict[str, Any]:
+        """Get all data for a device including signal and location.
+
+        Args:
+            device_id: The device ID to get data for
+            use_cache_only: If True, only use cached data without making API calls.
+                           This is used for WebSocket updates where data is already fresh.
+        """
         device = self._devices.get(device_id, {})
 
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
-        
+
         result = {
             "device_id": device_id,
             "name": device_name,
@@ -221,65 +227,72 @@ class PetTracerApi:
             "battery_level": None,
             "last_update": None,
         }
-        
+
         # Get battery from device data
         if device.get("accuWarn") is not None:
             # accuWarn is a battery level indicator
             result["battery_level"] = device.get("accuWarn")
-        
+
         # Get location from lastPos
         last_pos = device.get("lastPos")
         if last_pos:
             result["latitude"] = last_pos.get("lat")
             result["longitude"] = last_pos.get("lng")
             result["last_update"] = last_pos.get("timeDb")
-        
-        # Get latest FIFO data for most recent signal
+
+        # Get signal from cached lastRssi (updated via WebSocket)
+        last_rssi = device.get("lastRssi", 0)
+        if last_rssi:
+            dbm = format_rssi(last_rssi)
+            percent = rssi_to_percent(dbm)
+            result["rssi_raw"] = last_rssi
+            result["rssi_dbm"] = dbm
+            result["signal_percent"] = percent
+            result["signal_level"] = get_signal_level(percent)
+
+        # If using cache only (WebSocket update), skip API call
+        if use_cache_only:
+            _LOGGER.debug("Using cached data only for device %s", device_id)
+            return result
+
+        # Get latest FIFO data for most recent signal (only on initial load)
         try:
             device_info = await self.get_device_fifo(device_id)
 
             if device_info and "fifo" in device_info:
 
-                fifo_data = device_info["fifo"]            
+                fifo_data = device_info["fifo"]
                 # Extract signal and position from FIFO data
                 if isinstance(fifo_data, list) and len(fifo_data) > 0:
                     latest = fifo_data[0]
-                    
+
                     # Signal from receivedBy
                     received_by = latest.get("receivedBy", [])
                     if received_by:
                         raw_rssi = received_by[0].get("rssi", 0)
                         dbm = format_rssi(raw_rssi)
                         percent = rssi_to_percent(dbm)
-                        
+
                         result["rssi_raw"] = raw_rssi
                         result["rssi_dbm"] = dbm
                         result["signal_percent"] = percent
                         result["signal_level"] = get_signal_level(percent)
-                    
+
                     # Position from last position
                     telegram = latest.get("telegram", {})
                     if telegram:
                         result["latitude"] = telegram.get("latitude")
                         result["longitude"] = telegram.get("longitude")
-                    
+
                         # Update timestamp
                         if telegram.get("timeDb"):
                             result["last_update"] = telegram["timeDb"]
-                    
+
         except Exception as err:
             _LOGGER.warning("Failed to get FIFO data for %s: %s", device_id, err)
-            
-            # Fallback to device's lastRssi if available
-            last_rssi = device.get("lastRssi", 0)
-            if last_rssi:
-                dbm = format_rssi(last_rssi)
-                percent = rssi_to_percent(dbm)
-                result["rssi_raw"] = last_rssi
-                result["rssi_dbm"] = dbm
-                result["signal_percent"] = percent
-                result["signal_level"] = get_signal_level(percent)
-        
+
+            # Already using lastRssi fallback above
+
         return result
 
     async def get_all_device_data(self) -> dict[str, dict[str, Any]]:
