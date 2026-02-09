@@ -106,7 +106,7 @@ class PetTracerApi:
         # Add 5 minute buffer
         return datetime.now() < self._token_expires - timedelta(minutes=5)
 
-    def calculate_battery_percentage(voltage_mv):
+    def calculate_battery_percentage(self, voltage_mv: int) -> float:
         """
         Converts battery millivolts to a percentage (0-100).
         Input range: 3000mV (0%) to 4150mV (100%).
