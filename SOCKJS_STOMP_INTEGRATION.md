@@ -6,6 +6,27 @@ Real-time **SockJS/STOMP WebSocket** support has been fully integrated!
 
 ---
 
+## 🔧 Recent Fixes (2026-02-09)
+
+### Added `/app/subscribe` Activation
+**Issue**: WebSocket connected and subscribed to queues, but devices never sent updates  
+**Root Cause**: Missing SEND frame to `/app/subscribe` with device IDs  
+**Solution**: Added `_send_app_subscribe()` method that activates device subscriptions after STOMP CONNECTED
+
+**STOMP Frame Format**:
+```
+SEND
+destination:/app/subscribe
+content-type:application/json
+content-length:27
+
+{"deviceIds":[23712,24012]}\u0000
+```
+
+This tells the server which devices to push updates for. Without it, the queues remain silent.
+
+---
+
 ## 🏗️ Architecture
 
 ```

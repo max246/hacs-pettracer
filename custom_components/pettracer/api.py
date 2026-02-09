@@ -443,6 +443,33 @@ class PetTracerApi:
         _LOGGER.debug("Subscribing to %s", destination)
         await websocket.send(sockjs_frame)
 
+    async def _send_app_subscribe(self, websocket) -> None:
+        """Send STOMP SEND frame to /app/subscribe with device IDs."""
+        # Get device IDs from cached devices
+        device_ids = [int(device_id) for device_id in self._devices.keys()]
+        
+        if not device_ids:
+            _LOGGER.warning("No devices to subscribe to")
+            return
+        
+        # Create JSON body
+        body = json.dumps({"deviceIds": device_ids})
+        
+        # STOMP SEND frame with content-length
+        stomp_frame = (
+            f"SEND\n"
+            f"destination:/app/subscribe\n"
+            f"content-type:application/json\n"
+            f"content-length:{len(body)}\n"
+            f"\n"
+            f"{body}\x00"
+        )
+        
+        sockjs_frame = json.dumps([stomp_frame])
+        
+        _LOGGER.info("Sending /app/subscribe with device IDs: %s", device_ids)
+        await websocket.send(sockjs_frame)
+
     async def _parse_sockjs_message(self, raw_message: str) -> None:
         """Parse SockJS frame and extract STOMP messages."""
         _LOGGER.debug("Raw SockJS message: %s", raw_message[:200])
@@ -495,6 +522,9 @@ class PetTracerApi:
             if self._ws:
                 await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_MESSAGES, "sub-0")
                 await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_PORTAL, "sub-1")
+                
+                # Send subscription request to /app/subscribe with device IDs
+                await self._send_app_subscribe(self._ws)
             return
         
         if frame_str.startswith("MESSAGE"):
