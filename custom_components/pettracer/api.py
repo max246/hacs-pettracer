@@ -421,6 +421,7 @@ class PetTracerApi:
             f"\x00"
         )
         
+        _LOGGER.debug(f"SOCKET: connecting {stomp_frame}")
         # Wrap in SockJS send frame: ["..."]
         sockjs_frame = json.dumps([stomp_frame])
         
@@ -438,6 +439,7 @@ class PetTracerApi:
             f"\x00"
         )
         
+        _LOGGER.debug(f"SOCKET: sending {stomp_frame}")
         sockjs_frame = json.dumps([stomp_frame])
         
         _LOGGER.debug("Subscribing to %s", destination)
@@ -451,6 +453,8 @@ class PetTracerApi:
         if not device_ids:
             _LOGGER.warning("No devices to subscribe to")
             return
+
+
         
         # Create JSON body
         body = json.dumps({"deviceIds": device_ids})
@@ -464,6 +468,8 @@ class PetTracerApi:
             f"\n"
             f"{body}\x00"
         )
+
+        _LOGGER.debug(f"SOCKET: sending2 {stomp_frame}")
         
         sockjs_frame = json.dumps([stomp_frame])
         
