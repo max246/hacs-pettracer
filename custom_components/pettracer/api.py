@@ -106,6 +106,35 @@ class PetTracerApi:
         # Add 5 minute buffer
         return datetime.now() < self._token_expires - timedelta(minutes=5)
 
+    def calculate_battery_percentage(voltage_mv):
+        """
+        Converts battery millivolts to a percentage (0-100).
+        Input range: 3000mV (0%) to 4150mV (100%).
+        """
+        # Clamp the voltage between 3000 and 4150
+        voltage = max(3000, min(voltage_mv, 4150))
+        
+        if voltage >= 4000:
+            # Range: 4000 - 4150
+            percentage = (voltage - 4150) / 150 * 17 + 83
+        elif voltage >= 3900:
+            # Range: 3900 - 3999
+            percentage = (voltage - 3900) / 100 * 26 + 67
+        elif voltage >= 3840:
+            # Range: 3840 - 3899
+            percentage = (voltage - 3840) / 60 * 17 + 50
+        elif voltage >= 3760:
+            # Range: 3760 - 3839
+            percentage = (voltage - 3760) / 80 * 16 + 34
+        elif voltage >= 3600:
+            # Range: 3600 - 3759
+            percentage = (voltage - 3600) / 160 * 17 + 17
+        else:
+            # Below 3600
+            percentage = 0
+            
+        return round(percentage)
+
     async def authenticate(self) -> bool:
         """Authenticate with PetTracer API."""
         session = await self._ensure_session()
@@ -203,6 +232,8 @@ class PetTracerApi:
             
             return await response.json()
 
+
+    
     async def get_device_data(self, device_id: str, use_cache_only: bool = False) -> dict[str, Any]:
         """Get all data for a device including signal and location.
 
@@ -229,9 +260,9 @@ class PetTracerApi:
         }
 
         # Get battery from device data
-        if device.get("accuWarn") is not None:
-            # accuWarn is a battery level indicator
-            result["battery_level"] = device.get("accuWarn")
+        if device.get("bat") is not None:
+            # batt is a battery level indicator
+            result["battery_level"] = self.calculate_battery_percentage(device.get("bat"))
 
         # Get location from lastPos
         last_pos = device.get("lastPos")
@@ -610,10 +641,10 @@ class PetTracerApi:
                 device["lastRssi"] = data["lastRssi"]
                 _LOGGER.info("Updated signal for device %s: %s dBm", device_id, data["lastRssi"])
             
-            # Update battery from accuWarn
-            if "accuWarn" in data:
-                device["accuWarn"] = data["accuWarn"]
-                _LOGGER.info("Updated battery for device %s: %s", device_id, data["accuWarn"])
+            # Update battery from bat
+            if "bat" in data:
+                device["bat"] = self.calculate_battery_percentage(data["bat"])
+                _LOGGER.info("Updated battery for device %s: %s", device_id, data["bat"])
             
             # Update entire FIFO data if present
             if "fiFo" in data:
