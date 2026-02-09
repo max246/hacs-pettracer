@@ -113,6 +113,7 @@ class PetTracerApi:
         """
         # Clamp the voltage between 3000 and 4150
         voltage = max(3000, min(voltage_mv, 4150))
+        _LOGGER.debug(f"Voltage in: {voltage_mv} and clamped {voltage}")
         
         if voltage >= 4000:
             # Range: 4000 - 4150
@@ -132,6 +133,8 @@ class PetTracerApi:
         else:
             # Below 3600
             percentage = 0
+
+        _LOGGER.debug(f"Raw percentage: {percentage} and round {round(percentage)}")
             
         return round(percentage)
 
@@ -644,7 +647,7 @@ class PetTracerApi:
             # Update battery from bat
             if "bat" in data:
                 device["bat"] = self.calculate_battery_percentage(data["bat"])
-                _LOGGER.info("Updated battery for device %s: %s", device_id, data["bat"])
+                _LOGGER.info("Updated battery for device %s: %s %s", device_id, data["bat"], self.calculate_battery_percentage(data["bat"]))
             
             # Update entire FIFO data if present
             if "fiFo" in data:
