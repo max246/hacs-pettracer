@@ -449,8 +449,15 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
     @property
     def entity_picture(self):
         # Returns a 1x1 pixel square of the colour
-        colour = self._hex_code
-        return f"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><rect width='1' height='1' fill='{colour}'/></svg>"
+
+        # 2. Return a valid, URL-encoded SVG string
+        # Note: Using %23 instead of # for the fill color is safer for some browsers
+        return (
+            "data:image/svg+xml;utf8,"
+            f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'>"
+            f"<circle cx='25' cy='25' r='20' fill='{self._hex_code.replace('#', '%23')}'/>"
+            "</svg>"
+        )
 
     @property
     def extra_state_attributes(self):
