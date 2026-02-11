@@ -36,7 +36,7 @@ async def async_setup_entry(
     
     entities: list[SensorEntity] = []
     
-    for device_id, device_data in coordinator.data.items():
+    for device_id, device_data in coordinator.data["collars"].items():
         # Signal strength percentage sensor
         entities.append(
             PetTracerSignalPercentSensor(coordinator, device_id, device_data)

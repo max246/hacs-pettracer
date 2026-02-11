@@ -34,6 +34,7 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api = api
         self.entry = entry
         self.devices: dict[str, dict[str, Any]] = {}
+        self.home_stations: dict[str, dict[str, Any]] = {}
 
         # Register callback for WebSocket updates
         self.api.register_callback(self._handle_websocket_update)
@@ -47,7 +48,13 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         _LOGGER.debug("Fetching initial data for coordinator")
         try:
             # Get all device data (signal + location)
-            all_data = await self.api.get_all_device_data()
+            collars = await self.api.get_all_device_data()
+            #home_stations = await self.api.get_()
+
+            all_data = {
+                "collars" : collars,
+                "home_stations" : {}
+            }
             _LOGGER.debug(f"Fetched initial data: {all_data}")
 
             # Update local device cache
@@ -87,11 +94,11 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             # Update coordinator data
             if self.data:
-                self.data[device_id] = device_data
+                self.data["collars"][device_id] = device_data
             else:
-                self.data = {device_id: device_data}
+                self.data["collars"] = {device_id: device_data}
 
-            self.devices[device_id] = device_data
+            self.devices["collars"][device_id] = device_data
 
             # Notify all listeners (sensors, device trackers) of the update
             self.async_set_updated_data(self.data)
@@ -112,7 +119,7 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         device_id = update.get("device_id")
 
         if device_id:
-            if device_id in self.devices or device_id in self.api._devices:
+            if device_id in self.devices["collars"] or device_id in self.api._devices:
                 # Update device data from API cache (no new API call)
                 self.hass.async_create_task(self._update_device_from_websocket(device_id))
             else:

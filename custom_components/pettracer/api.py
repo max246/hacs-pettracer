@@ -261,6 +261,23 @@ class PetTracerApi:
 
         return result
 
+    # async def get_all_home_station_data(self) -> dict[str, dict[str, Any]]:
+    #     """Get all data for all devices."""
+    #     home_ = await self.get_home_stations()
+    #     all_data = {}
+    #
+    #     for device in devices:
+    #
+    #         device_id = str(device.get("id"))
+    #         try:
+    #             device_data = await self.get_device_data(device_id)
+    #             all_data[device_id] = device_data
+    #         except Exception as err:
+    #             _LOGGER.debug("Detailed traceback for Pettrace login:", exc_info=True)
+    #             _LOGGER.exception("Failed to get data for device %s: %s", device_id, err)
+    #
+    #     return all_data
+
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
         collars = await self.get_cat_collars()

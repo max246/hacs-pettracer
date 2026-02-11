@@ -28,16 +28,11 @@ async def async_setup_entry(
     entities: list[TrackerEntity] = []
     
     if coordinator.data:
-        for device_id, device_data in coordinator.data.items():
+        for device_id, device_data in coordinator.data["collars"].items():
             entities.append(PetTracerDeviceTracker(coordinator, device_id, device_data))
 
-        device_data = {
-            "device_id": 23149,
-            "hw": 786432,
-            "sw": 917506,
-            "status": "Online"
-        }
-        entities.append(PetTracerHomeStation(coordinator, 23149, device_data ))
+        for device_id, device_data in coordinator.data["home_stations"].items():
+            entities.append(PetTracerHomeStation(coordinator, device_id, device_data))
     
     async_add_entities(entities)
 
