@@ -49,11 +49,11 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # Get all device data (signal + location)
             collars = await self.api.get_all_device_data()
-            #home_stations = await self.api.get_()
+            home_stations = await self.api.get_all_home_station_data()
 
             all_data = {
                 "collars" : collars,
-                "home_stations" : {}
+                "home_stations" : home_stations
             }
             _LOGGER.debug(f"Fetched initial data: {all_data}")
 
@@ -91,12 +91,15 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # Get updated device data from API cache (no API calls, uses cached data only)
             device_data = await self.api.get_device_data(device_id, use_cache_only=True)
-
+            _LOGGER.debug(f"Data coming from cached: {device_data}")
             # Update coordinator data
             if self.data:
                 self.data["collars"][device_id] = device_data
             else:
                 self.data["collars"] = {device_id: device_data}
+
+
+            _LOGGER.debug(f"Data in the coordiantor:  {self.data}")
 
             self.devices["collars"][device_id] = device_data
 

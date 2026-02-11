@@ -175,7 +175,7 @@ class PetTracerApi:
             _LOGGER.debug(f"Error {e}")
             raise PetTracerApiError(f"Failure to retrieve collars")
 
-    async def get_home_stations(self) -> dict[str, Any]:
+    async def get_home_stations_api(self) -> dict[str, Any]:
         """Get home stations info."""
         await self._ensure_authenticated()
         session = await self._ensure_session()
@@ -197,7 +197,7 @@ class PetTracerApi:
 
     async def get_home_stations(self) -> list[dict[str, Any]]:
         """Get list of home stations (command centers/trackers)."""
-        home_stations = await self.get_home_stations()
+        home_stations = await self.get_home_stations_api()
 
         _LOGGER.debug(f"Home stations found {home_stations}")
 
@@ -261,22 +261,21 @@ class PetTracerApi:
 
         return result
 
-    # async def get_all_home_station_data(self) -> dict[str, dict[str, Any]]:
-    #     """Get all data for all devices."""
-    #     home_ = await self.get_home_stations()
-    #     all_data = {}
-    #
-    #     for device in devices:
-    #
-    #         device_id = str(device.get("id"))
-    #         try:
-    #             device_data = await self.get_device_data(device_id)
-    #             all_data[device_id] = device_data
-    #         except Exception as err:
-    #             _LOGGER.debug("Detailed traceback for Pettrace login:", exc_info=True)
-    #             _LOGGER.exception("Failed to get data for device %s: %s", device_id, err)
-    #
-    #     return all_data
+    async def get_all_home_station_data(self) -> dict[str, dict[str, Any]]:
+        """Get all data for all home stations."""
+        home_station = await self.get_home_stations()
+        all_data = {}
+
+        for home_statio in home_station:
+
+            home_station_id = str(home_statio.get("id"))
+            try:
+                home_station_data = await self.get_home_station_data(home_station_id)
+                all_data[home_station_id] = home_station_data
+            except Exception as err:
+                _LOGGER.exception("Failed to get data for home station %s: %s", home_station_id, err)
+
+        return all_data
 
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
@@ -502,7 +501,6 @@ class PetTracerApi:
                 device_data = await self.get_device_data(device_id)
                 all_data[device_id] = device_data
             except Exception as err:
-                _LOGGER.debug("Detailed traceback for Pettrace login:", exc_info=True)
                 _LOGGER.exception("Failed to get data for device %s: %s", device_id, err)
         
         return all_data
