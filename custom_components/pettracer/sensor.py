@@ -203,7 +203,7 @@ class PetTracerBatteryVoltageSensor(PetTracerBaseSensor):
         self._attr_unique_id = f"{device_id}_battery_voltage"
         self._attr_name = "Battery Voltage"
         self._attr_native_unit_of_measurement = "mV"
-        self._attr_device_class = SensorDeviceClass.BATTERY
+        self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = "mdi:battery"
 
