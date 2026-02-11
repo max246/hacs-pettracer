@@ -218,6 +218,8 @@ class PetTracerApi:
         """
         home_station = self._home_stations.get(home_station_id, {})
 
+        _LOGGER.debug(f" DATA FROM HOME STATION {home_station}")
+
         result = {
             "device_id": home_station_id,
             "name": f"Home station {home_station_id}",

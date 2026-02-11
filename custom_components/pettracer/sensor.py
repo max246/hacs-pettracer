@@ -135,8 +135,8 @@ class PetTracerBaseSensor(CoordinatorEntity[PetTracerCoordinator], SensorEntity)
 
     def _get_device_data(self) -> dict[str, Any] | None:
         """Get current device data from coordinator."""
-        if self.coordinator.data:
-            return self.coordinator.data.get(self._device_id)
+        if self.coordinator.data["collars"]:
+            return self.coordinator.data["collars"].get(self._device_id)
         return None
 
     @property
