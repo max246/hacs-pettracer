@@ -324,6 +324,3 @@ custom_components/pettracer/
 └── const.py             ✅ WebSocket URL + topics
 ```
 
----
-
-**Ready to test! Send me the logs when you try it! 😝**

@@ -9,23 +9,55 @@ A Home Assistant custom integration for [PetTracer](https://www.pettracer.com/) 
 - 📍 **GPS Location Tracking** - See your pet's location on the Home Assistant map
 - 📶 **Signal Strength Monitoring** - Track GPS signal strength in real-time
 - 🔋 **Battery Level** - Monitor tracker battery status
+- 🪫 **Battery voltage** - Monitor tracker battery voltage
 - 📊 **Multiple Sensors** - Signal percentage, dBm, battery, and signal level
-- 🔄 **Auto-refresh** - Data updates every 60 seconds
+- 🔄 **Auto-refresh** - Via Websocket based on your mode
 - 🐕 **Multi-device Support** - Works with multiple trackers on one account
+- 🖥️ **Hardware information** - From software version to hardware version
+- 🐕 **All the modes** - Showing all the modes of the collar, even the hidden ones!
+- 🎼 **Buzzer and Led status** - Showing the current status of them
+- ⌛ **Search mode information** - When search mode is enabled you get all the insight info
+- 🎨 **Collar colour** - Expose your picked colour and can be used as SVG
+- 🏠 **Home stations** - Show all your home stations and which wifi is connected
 
 ## Entities
 
 ### Device Tracker
-Your pet will appear as a device tracker on the Home Assistant map with GPS coordinates.
+Comprehensive tracking for the PetTracer ecosystem. View all your cat collars on the map while 
+accessing deep-layer attributes like raw voltage and last-seen timestamps. Includes full support 
+for Home Stations, displaying connectivity status and hardware versions through dynamic, color-coded icons.
 
 ### Sensors
 
-| Sensor | Description | Unit |
-|--------|-------------|------|
-| Signal Strength | Signal strength as percentage | % |
-| Signal dBm | Signal strength in decibels | dBm |
-| Signal Level | Text (excellent/good/fair/poor/none) | - |
-| Battery | Tracker battery level | % |
+#### Collar
+
+| Sensor               | Description                                        | Unit    |
+|----------------------|----------------------------------------------------|---------|
+| Signal Strength      | Signal strength as percentage                      | %       |
+| Signal dBm           | Signal strength in decibels                        | dBm     |
+| Signal Level         | Text (excellent/good/fair/poor/none)               | -       |
+| Battery              | Tracker battery level                              | %       |
+| Battery Voltage      | Tracker battery voltage                            | mV      |
+| Buzzer               | Buzzer status                                      | On/Off  |
+| LED                  | LED status                                         | On/Off  |
+| Collar colour        | Colour selected in the app provided in SVG and HEX | -       |
+| Hardware version     | Current Hardware version                           | -       |
+| Software version     | Current Software version                           | -       |
+| GPS Satellite        | Current GPS Satellite connected to the collar      | -       |
+| Operation Mode       | Current mode                                       | -       |
+| Search mode          | Current search mode                                | -       |
+| Search mode duration | Current search mode duration                       | -       |
+
+
+
+#### Home station
+
+
+| Sensor    | Description            | Unit |
+|-----------|------------------------|------|
+| Flags     | Current flags          | -    |
+| Status    | Current status         | -    |
+| Wifi SSID | Current wifi connected | -    |
 
 ## Installation
 
@@ -49,7 +81,7 @@ Your pet will appear as a device tracker on the Home Assistant map with GPS coor
 ## Configuration
 
 1. Go to **Settings** → **Devices & Services**
-2. Click **+ Add Integration**
+2. Click **[+]() Add Integration**
 3. Search for "PetTracer"
 4. Enter your PetTracer account email and password
 5. Your trackers will be automatically discovered

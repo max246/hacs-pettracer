@@ -12,7 +12,8 @@ ENDPOINT_USER_INFO = "/user/info" # Apprently not used!
 ENDPOINT_CAT_COLLARS = "/map/getccs"
 ENDPOINT_CC_LIST = "/user/details"  # Gets list of command centers (trackers)
 ENDPOINT_CC_FIFO = "/cc/{cc_id}/fifo" # Apprently not used!
-ENDPOINT_CC_INFO = "/map/getccinfo" 
+ENDPOINT_CC_INFO = "/map/getccinfo"
+ENDPOINT_HOME_STATIONS = "/user/gethomestations"
 
 # STOMP Destinations
 STOMP_QUEUE_MESSAGES = "/user/queue/messages"
