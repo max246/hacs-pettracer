@@ -443,7 +443,8 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         self._attr_name = "Collar colour"
         self._attr_device_class =  None
         self._attr_icon = None
-        self._hex_code = "#808080"
+        self._hex_code = self._get_hex_colour(device_data.get("colour"))
+        _LOGGER.debug(f" COOLAR COLOUR IS {device_data}")
 
     def _get_hex_colour(self, colour: int | None) -> str:
         if colour is None: # Default return grey
@@ -471,7 +472,6 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         """Return colour."""
         data = self._get_device_data()
         if data:
-            self._hex_code = self._get_hex_colour(data.get("colour"))
             return self._get_name(self._hex_code)
         return None
 
