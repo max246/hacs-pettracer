@@ -452,6 +452,12 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         colour = self._hex_code
         return f"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><rect width='1' height='1' fill='{colour}'/></svg>"
 
+    @property
+    def extra_state_attributes(self):
+        return {
+            "status_color": self._hex_code
+        }
+
 class PetTracerHardwareVersionSensor(PetTracerBaseSensor):
     """Sensor for Hardware version."""
 
