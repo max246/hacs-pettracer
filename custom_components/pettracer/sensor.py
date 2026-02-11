@@ -413,7 +413,7 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         self._attr_unique_id = f"{device_id}_collar_colour"
         self._attr_name = "Collar colour"
         self._attr_device_class =  None
-        #self._attr_icon = "mdi:cat"
+        self._attr_icon = None
         self._hex_code = "#FF00FF"
 
     def _get_hex_colour(self, colour: int | None) -> str:
@@ -439,7 +439,7 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
 
     @property
     def native_value(self) -> str | None:
-        """Return the software version."""
+        """Return colour."""
         data = self._get_device_data()
         if data:
             self._hex_code = self._get_hex_colour(data.get("colour"))
