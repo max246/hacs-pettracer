@@ -204,7 +204,7 @@ class PetTracerBatteryVoltageSensor(PetTracerBaseSensor):
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.MILLIVOLT
-        self._attr_icon = "mdi:battery"
+        self._attr_icon = "mdi:battery-plus-variant"
 
     @property
     def native_value(self) -> int | None:
@@ -413,10 +413,12 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         self._attr_unique_id = f"{device_id}_collar_colour"
         self._attr_name = "Collar colour"
         self._attr_device_class =  None
-        self._attr_icon = "mdi:cat"
-        self._hex_code = ""
+        #self._attr_icon = "mdi:cat"
+        self._hex_code = "#FF00FF"
 
-    def _get_hex_colour(self, colour: int) -> str:
+    def _get_hex_colour(self, colour: int | None) -> str:
+        if colour is None: # Default return blue
+            return "#0000FF"
         # Extract RGB components using bitwise shifts
         r = (colour >> 16) & 255
         g = (colour >> 8) & 255
