@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, SIGNAL_STRENGTH_DECIBELS_MILLIWATT,MILLIVOLT, ATTR_BATTERY_CHARGING, ATTR_SW_VERSION, ATTR_HW_VERSION
+from homeassistant.const import PERCENTAGE, SIGNAL_STRENGTH_DECIBELS_MILLIWATT, ATTR_BATTERY_CHARGING, ATTR_SW_VERSION, ATTR_HW_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -414,7 +414,7 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_collar_colour"
         self._attr_name = "Collar colour"
-        self._attr_native_unit_of_measurement = MILLIVOLT
+        self._attr_native_unit_of_measurement = "mV"
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = "mdi:cat"
