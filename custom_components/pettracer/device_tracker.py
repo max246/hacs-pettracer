@@ -28,6 +28,7 @@ async def async_setup_entry(
     entities: list[TrackerEntity] = []
     
     if coordinator.data:
+        _LOGGER.debug(f" Output of the data {coordinator.data}")
         for device_id, device_data in coordinator.data["collars"].items():
             entities.append(PetTracerDeviceTracker(coordinator, device_id, device_data))
 
@@ -113,8 +114,8 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
 
     def _get_device_data(self) -> dict[str, Any] | None:
         """Get current device data from coordinator."""
-        if self.coordinator.data:
-            return self.coordinator.data.get(self._device_id)
+        if self.coordinator.data["collars"]:
+            return self.coordinator.data["collars"].get(self._device_id)
         return None
 
 
