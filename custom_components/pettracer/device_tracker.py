@@ -60,6 +60,7 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
         self._attr_has_entity_name = True
         self._hw = device_data.get("hw")
         self._sw = device_data.get("sw")
+        self._attr_icon = "mdi:cat"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -141,6 +142,7 @@ class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntit
         self._status = device_data.get("status")
         self._hw = device_data.get("hw")
         self._sw = device_data.get("sw")
+        self._attr_icon = "mdi:antenna"
 
     @property
     def device_info(self) -> DeviceInfo:

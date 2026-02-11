@@ -79,6 +79,7 @@ class PetTracerApi:
         self._token_expires: datetime | None = None
         self._user_data: dict[str, Any] = {}
         self._devices: dict[str, dict[str, Any]] = {}
+        self._home_stations: dict[str, dict[str, Any]] = {}
         self._callbacks: list[Callable[[dict[str, Any]], None]] = []
         
         # WebSocket/SockJS/STOMP connection
@@ -193,7 +194,72 @@ class PetTracerApi:
         except Exception as e:
             _LOGGER.debug(f"Error {e}")
             raise PetTracerApiError(f"Failure to retrieve home stations")
-            
+
+    async def get_home_stations(self) -> list[dict[str, Any]]:
+        """Get list of home stations (command centers/trackers)."""
+        home_stations = await self.get_home_stations()
+
+        _LOGGER.debug(f"Home stations found {home_stations}")
+
+        # Update local device cache
+        for home_station in home_stations:
+            home_station_id = str(home_station.get("id"))
+            self._home_stations[home_station_id] = home_station
+
+        return home_stations
+
+    async def get_home_station_data(self, home_station_id: str, use_cache_only: bool = False) -> dict[str, Any]:
+        """Get all data for a device including signal and location.
+
+        Args:
+            device_id: The device ID to get data for
+            use_cache_only: If True, only use cached data without making API calls.
+                           This is used for WebSocket updates where data is already fresh.
+        """
+        home_station = self._home_stations.get(home_station_id, {})
+
+        result = {
+            "device_id": home_station_id,
+            "name": f"Home station {home_station_id}",
+            "battery": 0,
+            "hw": None,
+            "sw": None,
+            "flags": "none",
+            "last_update": None,
+            "rssi": 0,
+            "status": None,
+            "type": None,
+            "wifi_ssid": None
+        }
+
+        if home_station.get("bat") is not None:
+            result["battery"] = home_station.get("bat")
+
+        if home_station.get("flags") is not None:
+                result["flags"] = home_station.get("flags")
+
+        if home_station.get("hw") is not None:
+            result["hw"] = home_station.get("hw")
+
+        if home_station.get("lastContact") is not None:
+            result["last_update"] = home_station.get("lastContact")
+
+        if home_station.get("rssi") is not None:
+            result["rssi"] = home_station.get("rssi")
+
+        if home_station.get("status") is not None:
+            result["status"] = home_station.get("status")
+
+        if home_station.get("sw") is not None:
+            result["sw"] = home_station.get("sw")
+
+        if home_station.get("type") is not None:
+            result["type"] = home_station.get("type")
+
+        if home_station.get("wlanSsid") is not None:
+            result["wifi_ssid"] = home_station.get("wlanSsid")
+
+        return result
 
     async def get_devices(self) -> list[dict[str, Any]]:
         """Get list of devices (command centers/trackers)."""
@@ -344,8 +410,10 @@ class PetTracerApi:
         if device.get("hw") is not None:
             result["hw"] = device.get("hw")
 
-
-
+        if details := device.get("details"):
+            result["collar_colour"] = details.get("color", 0)
+            result["cat_image"] = details.get("image", None)
+            result["cat_birthdate"] = details.get("birth", None)
 
         # If using cache only (WebSocket update), skip API call
         if use_cache_only:
