@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.device_tracker import SourceType, TrackerEntity, SensorEntity
+from homeassistant.components.device_tracker import SourceType, TrackerEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -122,7 +122,7 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
         return None
 
 
-class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], SensorEntity):
+class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntity):
     """Representation of a PetTracer home station."""
 
     def __init__(
