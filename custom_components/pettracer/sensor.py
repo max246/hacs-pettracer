@@ -105,6 +105,25 @@ async def async_setup_entry(
             PetTracerLastUpdateSensor(coordinator, device_id, device_data)
         )
 
+    for device_id, device_data in coordinator.data["home_stations"].items():
+        # Last update sensor
+        entities.append(
+            PetTracerStationLastUpdateSensor(coordinator, device_id, device_data)
+        )
+        # Flags sensor
+        entities.append(
+            PetTracerStationFlagsSensor(coordinator, device_id, device_data)
+        )
+        # Status  sensor
+        entities.append(
+            PetTracerStationStatusSensor(coordinator, device_id, device_data)
+        )
+        # Wifi sensor
+        entities.append(
+            PetTracerStationWifiSensor(coordinator, device_id, device_data)
+        )
+
+
     async_add_entities(entities)
 
 
@@ -150,6 +169,141 @@ class PetTracerBaseSensor(CoordinatorEntity[PetTracerCoordinator], SensorEntity)
                 "last_update": data.get("last_update"),
             }
         return {}
+
+class PetTracerBaseHomeStationSensor(CoordinatorEntity[PetTracerCoordinator], SensorEntity):
+    """Base class for Home station sensors."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._device_id = device_id
+        self._device_name = device_data.get("name", f"Home Station {device_id}")
+        self._attr_has_entity_name = True
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_name,
+            manufacturer="PetTracer",
+            model="Home Station",
+        )
+
+    def _get_device_data(self) -> dict[str, Any] | None:
+        """Get current device data from coordinator."""
+        if self.coordinator.data["home_stations"]:
+            return self.coordinator.data["home_stations"].get(self._device_id)
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional attributes."""
+        data = self._get_device_data()
+        if data:
+            return {
+                "last_update": data.get("last_update"),
+            }
+        return {}
+
+
+class PetTracerStationFlagsSensor(PetTracerBaseHomeStationSensor):
+    """Sensor for station flags."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_flags"
+        self._attr_name = "Flags"
+        self._attr_icon = "mdi:flag"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the flags."""
+        data = self._get_device_data()
+        if data:
+            return data.get("flags")
+        return None
+
+
+class PetTracerStationLastUpdateSensor(PetTracerBaseHomeStationSensor):
+    """Sensor for last update."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_last_update"
+        self._attr_name = "Last Update"
+        self._attr_icon = "mdi:timer-sand-empty"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the last update."""
+        data = self._get_device_data()
+        if data:
+            return data.get("last_update")
+        return None
+
+class PetTracerStationStatusSensor(PetTracerBaseHomeStationSensor):
+    """Sensor for status."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_status"
+        self._attr_name = "Status"
+        self._attr_icon = "mdi:web-check"
+
+    @property
+    def native_value(self) -> str:
+        """Return the status."""
+        data = self._get_device_data()
+        if data:
+            return "Online" if data.get("status") else "Offline"
+        return "Unknown"
+
+class PetTracerStationWifiSensor(PetTracerBaseHomeStationSensor):
+    """Sensor for wifi ssid."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_wifi_ssid"
+        self._attr_name = "Wifi SSID"
+        self._attr_icon = "mdi:wifi"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the wifi ssid."""
+        data = self._get_device_data()
+        if data:
+            return data.get("wifi_ssid")
+        return None
 
 
 class PetTracerSignalPercentSensor(PetTracerBaseSensor):
@@ -443,8 +597,7 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         self._attr_name = "Collar colour"
         self._attr_device_class =  None
         self._attr_icon = None
-        self._hex_code = self._get_hex_colour(device_data.get("colour"))
-        _LOGGER.debug(f" COOLAR COLOUR IS {device_data}")
+        self._hex_code = self._get_hex_colour(device_data.get("collar_colour"))
 
     def _get_hex_colour(self, colour: int | None) -> str:
         if colour is None: # Default return grey
@@ -472,6 +625,7 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         """Return colour."""
         data = self._get_device_data()
         if data:
+            self._hex_code = self._get_hex_colour(data.get("collar_colour"))
             return self._get_name(self._hex_code)
         return None
 
