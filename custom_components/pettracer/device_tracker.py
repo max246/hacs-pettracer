@@ -26,13 +26,17 @@ async def async_setup_entry(
     coordinator: PetTracerCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     
     entities: list[TrackerEntity] = []
-
-    _LOGGER.debug(f"coordinato {coordinator}")
-    _LOGGER.debug(f"coordinato {coordinator.data}")
     
     if coordinator.data:
         for device_id, device_data in coordinator.data.items():
             entities.append(PetTracerDeviceTracker(coordinator, device_id, device_data))
+
+        device_data = {
+            "device_id": 23149,
+            "hw": 786432,
+            "sw": 917506
+        }
+        entities.append(PetTracerHomeStation(coordinator, 23149, device_data ))
     
     async_add_entities(entities)
 
@@ -53,6 +57,8 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
         self._attr_unique_id = f"{device_id}_location"
         self._attr_name = None  # Use device name
         self._attr_has_entity_name = True
+        self._hw = device_data.get("hw")
+        self._sw = device_data.get("sw")
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -62,6 +68,9 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
             name=self._device_name,
             manufacturer="PetTracer",
             model="GPS Tracker",
+            sw_version=self._sw,
+            hw_version=self._hw,
+            serial_number=self._device_id,
         )
 
     @property
@@ -110,3 +119,36 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
         if self.coordinator.data:
             return self.coordinator.data.get(self._device_id)
         return None
+
+
+class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntity):
+    """Representation of a PetTracer home station."""
+
+    def __init__(
+        self,
+        coordinator: PetTracerCoordinator,
+        device_id: str,
+        device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the home station."""
+        super().__init__(coordinator)
+        self._device_id = device_id
+        self._device_name = device_data.get("name", f"Home station {device_id}")
+        self._attr_unique_id = f"{device_id}_home_station"
+        self._attr_name = None  # Use device name
+        self._attr_has_entity_name = True
+        self._hw = ""
+        self._sw = ""
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_name,
+            manufacturer="PetTracer",
+            model="Home Station Tracker",
+            sw_version=self._sw,
+            hw_version=self._hw,
+            serial_number=self._device_id,
+        )

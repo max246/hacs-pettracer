@@ -20,6 +20,7 @@ from .const import (
     ENDPOINT_CC_INFO,
     STOMP_QUEUE_MESSAGES,
     STOMP_QUEUE_PORTAL,
+    ENDPOINT_HOME_STATIONS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -157,21 +158,41 @@ class PetTracerApi:
         """Get cat collars info."""
         await self._ensure_authenticated()
         session = await self._ensure_session()
-        
+
         try:
             async with session.get(
-                f"{API_URL}{ENDPOINT_CAT_COLLARS}",
-                headers=self._get_auth_headers(),
+                    f"{API_URL}{ENDPOINT_CAT_COLLARS}",
+                    headers=self._get_auth_headers(),
             ) as response:
                 if response.status != 200:
                     _LOGGER.debug(f"Error {response}")
-                    raise PetTracerApiError(f"Failed to get user info: {response.status}")
-                
+                    raise PetTracerApiError(f"Failed to get cat collars info: {response.status}")
+
                 self._user_data = await response.json()
                 return self._user_data
         except Exception as e:
             _LOGGER.debug(f"Error {e}")
-            raise PetTracerApiError(f"Failure to retrive collars")
+            raise PetTracerApiError(f"Failure to retrieve collars")
+
+    async def get_home_stations(self) -> dict[str, Any]:
+        """Get home stations info."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.get(
+                    f"{API_URL}{ENDPOINT_HOME_STATIONS}",
+                    headers=self._get_auth_headers(),
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to get home station info: {response.status}")
+
+                self._home_station_data = await response.json()
+                return self._home_station_data
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve home stations")
             
 
     async def get_devices(self) -> list[dict[str, Any]]:
@@ -182,7 +203,6 @@ class PetTracerApi:
         
         # Update local device cache
         for collar in collars:
-
             collar_id = str(collar.get("id"))
             self._devices[collar_id] = collar
         
@@ -218,6 +238,24 @@ class PetTracerApi:
 
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
 
+
+        """
+            set leds: setCatCollarLEDUrl
+            set buz: setCatCollarBuzUrl
+            set collar mode: setCatCollarModeUrl
+                    JSON.stringify({
+                        devType: 0,
+                        devId: e,
+                        cmdNr: t
+                    }
+            position quality: fixP and fixS
+             
+            turn off the collar : https://portal.pettracer.com/api/map/setccmode
+                {"devType":0,"devId":23712,"cmdNr":12}
+
+        
+        
+        """
         result = {
             "device_id": device_id,
             "name": device_name,
@@ -229,6 +267,23 @@ class PetTracerApi:
             "longitude": None,
             "battery_level": None,
             "last_update": None,
+            "hw": None,
+            "sw": None,
+            "buzzer": False,
+            "mode": None,
+            "mode_set": None,
+            "search_mode_duration": None,
+            "led_status": False,
+            "battery_charging": False,
+            "search": False,
+            "status": None,
+            "home": None,
+            "home_since": None,
+            "satellites": 0,
+            "last_position_flags": None,
+            "collar_colour": None
+
+
         }
 
         # Get battery from device data
@@ -252,6 +307,45 @@ class PetTracerApi:
             result["rssi_dbm"] = dbm
             result["signal_percent"] = percent
             result["signal_level"] = get_signal_level(percent)
+
+        if device.get("mode") is not None:
+            result["mode"] = device.get("mode")
+
+        if device.get("modeSet") is not None:
+            result["mode_set"] = device.get("modeSet")
+
+        if device.get("buz") is not None:
+            result["buzzer"] = device.get("buz")
+
+        if device.get("chg") is not None:
+            result["battery_charging"] = device.get("chg")
+
+        if device.get("led") is not None:
+            result["led_status"] = device.get("led")
+
+        if device.get("search") is not None:
+            result["search"] = device.get("search")
+
+        if device.get("status") is not None:
+            result["status"] = device.get("status")
+
+        if device.get("home") is not None:
+            result["home"] = device.get("home")
+
+        if device.get("homeSince") is not None:
+            result["home_since"] = device.get("homeSince")
+
+        if device.get("searchModeDuration") is not None:
+            result["search_mode_duration"] = device.get("searchModeDuration")
+
+        if device.get("sw") is not None:
+            result["sw"] = device.get("sw")
+
+        if device.get("hw") is not None:
+            result["hw"] = device.get("hw")
+
+
+
 
         # If using cache only (WebSocket update), skip API call
         if use_cache_only:
@@ -290,6 +384,19 @@ class PetTracerApi:
                         # Update timestamp
                         if telegram.get("timeDb"):
                             result["last_update"] = telegram["timeDb"]
+
+                        # Update satellites
+                        if telegram.get("sat"):
+                            result["satellites"] = telegram["sat"]
+
+                        # Update last position flag
+                        if telegram.get("flags"):
+                            result["last_position_flags"] = telegram["flags"]
+
+
+
+
+
 
         except Exception as err:
             _LOGGER.warning("Failed to get FIFO data for %s: %s", device_id, err)
