@@ -77,8 +77,7 @@ async def async_setup_entry(
             PetTracerCollarColourSensor(coordinator, device_id, device_data)
         )
 
-
-async_add_entities(entities)
+    async_add_entities(entities)
 
 
 class PetTracerBaseSensor(CoordinatorEntity[PetTracerCoordinator], SensorEntity):
