@@ -250,13 +250,19 @@ class PetTracerStationLastUpdateSensor(PetTracerBaseHomeStationSensor):
         self._attr_unique_id = f"{device_id}_last_update"
         self._attr_name = "Last Update"
         self._attr_icon = "mdi:timer-sand-empty"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
 
     @property
     def native_value(self) -> int | None:
         """Return the last update."""
         data = self._get_device_data()
         if data:
-            return data.get("last_update")
+            try:
+                dt_obj = datetime.strptime(data.get("last_update"), "%Y-%m-%dT%H:%M:%S.%f%z")
+                # 2. Convert to UTC (Home Assistant requirement for Timestamps)
+                return dt_util.as_utc(dt_obj)
+            except ValueError:
+                return None
         return None
 
 class PetTracerStationStatusSensor(PetTracerBaseHomeStationSensor):
@@ -279,7 +285,7 @@ class PetTracerStationStatusSensor(PetTracerBaseHomeStationSensor):
         """Return the status."""
         data = self._get_device_data()
         if data:
-            return "Online" if data.get("status") else "Offline"
+            return data.get("status")
         return "Unknown"
 
 class PetTracerStationWifiSensor(PetTracerBaseHomeStationSensor):
@@ -613,10 +619,11 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
 
     def _get_name(self, colour: str) -> str:
         colour_names = {
-            "#0000FF": "Blue",
-            "#00FF00": "Green",
-            "#FF0000": "Red",
-            "#FF00FF": "Pink"
+            "#24b8f8": "Blue",
+            "#82e3b5": "Green",
+            "#fc316e": "Pink",
+            "#a471f9": "Purple",
+            "#ff912c": "Orange"
         }
         return colour_names.get(colour, "Unknown")
 
