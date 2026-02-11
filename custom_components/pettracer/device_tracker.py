@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.device_tracker import SourceType, TrackerEntity
+from homeassistant.components.device_tracker import SourceType, TrackerEntity, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -34,7 +34,8 @@ async def async_setup_entry(
         device_data = {
             "device_id": 23149,
             "hw": 786432,
-            "sw": 917506
+            "sw": 917506,
+            "status": "Online"
         }
         entities.append(PetTracerHomeStation(coordinator, 23149, device_data ))
     
@@ -121,7 +122,7 @@ class PetTracerDeviceTracker(CoordinatorEntity[PetTracerCoordinator], TrackerEnt
         return None
 
 
-class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntity):
+class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], SensorEntity):
     """Representation of a PetTracer home station."""
 
     def __init__(
@@ -137,8 +138,9 @@ class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntit
         self._attr_unique_id = f"{device_id}_home_station"
         self._attr_name = None  # Use device name
         self._attr_has_entity_name = True
-        self._hw = ""
-        self._sw = ""
+        self._status = device_data.get("status")
+        self._hw = device_data.get("hw")
+        self._sw = device_data.get("sw")
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -152,3 +154,7 @@ class PetTracerHomeStation(CoordinatorEntity[PetTracerCoordinator], TrackerEntit
             hw_version=self._hw,
             serial_number=self._device_id,
         )
+
+    @property
+    def native_value(self):
+        return self._status

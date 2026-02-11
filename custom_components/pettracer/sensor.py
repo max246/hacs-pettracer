@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -17,6 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import PetTracerCoordinator
+from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,6 +76,33 @@ async def async_setup_entry(
         # Collar Colour sensor
         entities.append(
             PetTracerCollarColourSensor(coordinator, device_id, device_data)
+        )
+
+        # GPS Satellite sensor
+        entities.append(
+            PetTracerGPSSatelliteSensor(coordinator, device_id, device_data)
+        )
+        # LED status sensor
+        entities.append(
+            PetTracerLedStatusSensor(coordinator, device_id, device_data)
+        )
+        # Buzzer status sensor
+        entities.append(
+            PetTracerBuzzerStatusSensor(coordinator, device_id, device_data)
+        )
+
+        # Search mode sensor
+        entities.append(
+            PetTracerSearchModeSensor(coordinator, device_id, device_data)
+        )
+        # Search mode duration sensor
+        entities.append(
+            PetTracerSearchModeDurationSensor(coordinator, device_id, device_data)
+        )
+
+        # Last update sensor
+        entities.append(
+            PetTracerLastUpdateSensor(coordinator, device_id, device_data)
         )
 
     async_add_entities(entities)
@@ -349,7 +378,7 @@ class PetTracerSoftwareVersionSensor(PetTracerBaseSensor):
         self._attr_icon = "mdi:package-up"
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> str | None:
         """Return the software version."""
         data = self._get_device_data()
         if data:
@@ -414,11 +443,11 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
         self._attr_name = "Collar colour"
         self._attr_device_class =  None
         self._attr_icon = None
-        self._hex_code = "#FF00FF"
+        self._hex_code = "#808080"
 
     def _get_hex_colour(self, colour: int | None) -> str:
-        if colour is None: # Default return blue
-            return "#0000FF"
+        if colour is None: # Default return grey
+            return "#808080"
         # Extract RGB components using bitwise shifts
         r = (colour >> 16) & 255
         g = (colour >> 8) & 255
@@ -430,10 +459,10 @@ class PetTracerCollarColourSensor(PetTracerBaseSensor):
 
     def _get_name(self, colour: str) -> str:
         colour_names = {
-            "#0000FF": "blue",
-            "#00FF00": "green",
-            "#FF0000": "red",
-            "#FF00FF": "pink"
+            "#0000FF": "Blue",
+            "#00FF00": "Green",
+            "#FF0000": "Red",
+            "#FF00FF": "Pink"
         }
         return colour_names.get(colour, "Unknown")
 
@@ -481,9 +510,155 @@ class PetTracerHardwareVersionSensor(PetTracerBaseSensor):
         self._attr_icon = "mdi:chip"
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> str | None:
         """Return the software version."""
         data = self._get_device_data()
         if data:
             return data.get("hw")
+        return None
+
+class PetTracerGPSSatelliteSensor(PetTracerBaseSensor):
+    """Sensor for GPS Satellite."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_gps_satellite"
+        self._attr_name = "GPS Satellite"
+        self._attr_icon = "mdi:satellite-uplink"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return how many satellites are available."""
+        data = self._get_device_data()
+        if data:
+            return data.get("satellites")
+        return None
+
+class PetTracerLedStatusSensor(PetTracerBaseSensor):
+    """Sensor for LED."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_led_status"
+        self._attr_name = "LED Status"
+        self._attr_icon = "mdi:lightbulb-outline"
+
+    @property
+    def native_value(self) -> str:
+        """Return the led status."""
+        data = self._get_device_data()
+        if data:
+            return "On" if data.get("led_status") else "Off"
+        return "Unknown"
+
+class PetTracerBuzzerStatusSensor(PetTracerBaseSensor):
+    """Sensor for Buzzer."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_buzzer_status"
+        self._attr_name = "Buzzer Status"
+        self._attr_icon = "mdi:bugle"
+
+    @property
+    def native_value(self) -> str:
+        """Return the buzzer status."""
+        data = self._get_device_data()
+        if data:
+            return "On" if data.get("buzzer") else "Off"
+        return "Unknown"
+
+
+class PetTracerSearchModeSensor(PetTracerBaseSensor):
+    """Sensor for Search mode."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_search_mode"
+        self._attr_name = "Search mode"
+        self._attr_icon = "mdi:store-search"
+
+    @property
+    def native_value(self) -> str:
+        """Return the search mode."""
+        data = self._get_device_data()
+        if data:
+            return "On" if data.get("search") else "Off"
+        return "Unknown"
+
+
+class PetTracerSearchModeDurationSensor(PetTracerBaseSensor):
+    """Sensor for Search mode duration."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_search_mode_duration"
+        self._attr_name = "Search mode duration"
+        self._attr_icon = "mdi:timer-outline"
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the search mode duration."""
+        data = self._get_device_data()
+        if data:
+            return  data.get("search_mode_duration")
+        return None
+
+class PetTracerLastUpdateSensor(PetTracerBaseSensor):
+    """Sensor for Last Update."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_last_update"
+        self._attr_name = "Last Update"
+        self._attr_icon = "mdi:timer-sand-empty"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the last update."""
+        data = self._get_device_data()
+        if data:
+            try:
+                dt_obj = datetime.strptime(data.get("last_update"), "%Y-%m-%dT%H:%M:%S.%f%z")
+                # 2. Convert to UTC (Home Assistant requirement for Timestamps)
+                return dt_util.as_utc(dt_obj)
+            except ValueError:
+                return None
         return None
