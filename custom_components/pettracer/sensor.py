@@ -10,12 +10,11 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, SIGNAL_STRENGTH_DECIBELS_MILLIWATT, ATTR_BATTERY_CHARGING, ATTR_SW_VERSION, ATTR_HW_VERSION
+from homeassistant.const import UnitOfElectricPotential, PERCENTAGE, SIGNAL_STRENGTH_DECIBELS_MILLIWATT, ATTR_BATTERY_CHARGING, ATTR_SW_VERSION, ATTR_HW_VERSION
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
 from .const import DOMAIN
 from .coordinator import PetTracerCoordinator
 
@@ -202,7 +201,7 @@ class PetTracerBatteryVoltageSensor(PetTracerBaseSensor):
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_battery_voltage"
         self._attr_name = "Battery Voltage"
-        self._attr_native_unit_of_measurement = "mV"
+        self._attr_native_unit_of_measurement = UnitOfElectricPotential.MILLIVOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_icon = "mdi:battery"
