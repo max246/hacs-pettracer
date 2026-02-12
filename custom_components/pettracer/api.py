@@ -743,16 +743,20 @@ class PetTracerApi:
         if not device_id:
             _LOGGER.debug("No device ID in update")
             return
-        
+
+
         # Update device cache
         if device_id in self._devices:
             device = self._devices[device_id]
+            _LOGGER.debug(f"Before parsed for WS:{device}")
             self._parse_collar_json(data, device)
             
             # Update entire FIFO data if present
             if "fiFo" in data:
                 self._parse_collar_fifo(data["fiFo"], device)
-        
+
+            _LOGGER.debug(f"After parsed for WS:{device}")
+
         # Notify callbacks
         self._notify_callbacks({
             "device_id": device_id,
