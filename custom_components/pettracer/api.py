@@ -88,6 +88,34 @@ class PetTracerApi:
         self._ws_running = False
         self._stomp_session_id: str | None = None
 
+        self._collar_key_map = {
+            "battery_level": "bat",
+            "hw": "hw",
+            "sw": "sw",
+            "buzzer": "buz",
+            "mode": "mode",
+            "mode_set": "modeSet",
+            "search_mode_duration": "searchModeDuration",
+            "led_status": "led",
+            "battery_charging": "chg",
+            "search": "search",
+            "status": "status",
+            "home": "home",
+            "home_since": "homeSince",
+        }
+
+        self._station_key_map = {
+            "battery": "bat",
+            "hw": "hw",
+            "sw": "sw",
+            "flags": "flags",
+            "last_update": "lastContact",
+            "rssi": "rssi",
+            "status": "status",
+            "type": "type",
+            "wifi_ssid": "wlanSsid",
+        }
+
     async def _ensure_session(self) -> aiohttp.ClientSession:
         """Ensure we have an aiohttp session."""
         if self._session is None or self._session.closed:
@@ -234,32 +262,10 @@ class PetTracerApi:
             "wifi_ssid": None
         }
 
-        if home_station.get("bat") is not None:
-            result["battery"] = home_station.get("bat")
-
-        if home_station.get("flags") is not None:
-                result["flags"] = home_station.get("flags")
-
-        if home_station.get("hw") is not None:
-            result["hw"] = home_station.get("hw")
-
-        if home_station.get("lastContact") is not None:
-            result["last_update"] = home_station.get("lastContact")
-
-        if home_station.get("rssi") is not None:
-            result["rssi"] = home_station.get("rssi")
-
-        if home_station.get("status") is not None:
-            result["status"] = home_station.get("status")
-
-        if home_station.get("sw") is not None:
-            result["sw"] = home_station.get("sw")
-
-        if home_station.get("type") is not None:
-            result["type"] = home_station.get("type")
-
-        if home_station.get("wlanSsid") is not None:
-            result["wifi_ssid"] = home_station.get("wlanSsid")
+        # Loop the device and extract the information into our model
+        for key, api_key in self._station_key_map.items():
+            if home_station.get(api_key) is not None:
+                result[key] = home_station.get(api_key)
 
         return result
 
@@ -309,6 +315,59 @@ class PetTracerApi:
             return await response.json()
 
 
+    def _parse_rssi(self, rssi: int, result: dict[str, Any]) -> None:
+        if rssi:
+            dbm = format_rssi(rssi)
+            percent = rssi_to_percent(dbm)
+            result["rssi_raw"] = rssi
+            result["rssi_dbm"] = dbm
+            result["signal_percent"] = percent
+            result["signal_level"] = get_signal_level(percent)
+            _LOGGER.info("Updated signal for device %s: %s dBm", result.get("id"), rssi)
+
+    def _parse_collar_json(self, raw_data: dict[str, Any], result: dict[str, Any]) -> None:
+        # Loop the device and extract the information into our model
+        for key, api_key in self._collar_key_map.items():
+            if raw_data.get(api_key) is not None:
+                result[key] = raw_data.get(api_key)
+
+        # Get location from lastPos
+        last_pos = raw_data.get("lastPos")
+        if last_pos:
+            result["latitude"] = last_pos.get("posLat")
+            result["longitude"] = last_pos.get("posLong")
+            result["last_update"] = last_pos.get("timeDb")
+            _LOGGER.info("Updated location for device %s", result.get("device_id"))
+
+        # Get signal from cached lastRssi (updated via WebSocket)
+        last_rssi = raw_data.get("lastRssi", 0)
+        self._parse_rssi(last_rssi, result)
+
+    def _parse_collar_fifo(self, raw_fifo: list[dict[str, Any]], result: dict[str, Any]) -> None:
+        # Extract signal and position from FIFO data
+        if isinstance(raw_fifo, list) and len(raw_fifo) > 0:
+            latest = raw_fifo[0]
+            # Signal from receivedBy
+            received_by = latest.get("receivedBy", [])
+            if received_by:
+                raw_rssi = received_by[0].get("rssi", 0)
+                self._parse_rssi(raw_rssi, result)
+
+            # Position from last position
+            telegram = latest.get("telegram", {})
+            if telegram:
+                if telegram.get("latitude"):
+                    result["latitude"] = telegram.get("latitude")
+                    result["longitude"] = telegram.get("longitude")
+
+                # Update timestamp
+                if telegram.get("timeDb"):
+                    result["last_update"] = telegram["timeDb"]
+
+                # Update last position flag
+                if telegram.get("flags"):
+                    result["last_position_flags"] = telegram["flags"]
+
     
     async def get_device_data(self, device_id: str, use_cache_only: bool = False) -> dict[str, Any]:
         """Get all data for a device including signal and location.
@@ -319,9 +378,7 @@ class PetTracerApi:
                            This is used for WebSocket updates where data is already fresh.
         """
         device = self._devices.get(device_id, {})
-
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
-
 
         """
             set leds: setCatCollarLEDUrl
@@ -366,68 +423,11 @@ class PetTracerApi:
             "satellites": 0,
             "last_position_flags": None,
             "collar_colour": None
-
-
         }
 
-        # Get battery from device data
-        if device.get("bat") is not None:
-            # batt is a battery level indicator
-            result["battery_level"] = device.get("bat")
+        self._parse_collar_json(device, result)
 
-        # Get location from lastPos
-        last_pos = device.get("lastPos")
-        if last_pos:
-            result["latitude"] = last_pos.get("lat")
-            result["longitude"] = last_pos.get("lng")
-            result["last_update"] = last_pos.get("timeDb")
-
-        # Get signal from cached lastRssi (updated via WebSocket)
-        last_rssi = device.get("lastRssi", 0)
-        if last_rssi:
-            dbm = format_rssi(last_rssi)
-            percent = rssi_to_percent(dbm)
-            result["rssi_raw"] = last_rssi
-            result["rssi_dbm"] = dbm
-            result["signal_percent"] = percent
-            result["signal_level"] = get_signal_level(percent)
-
-        if device.get("mode") is not None:
-            result["mode"] = device.get("mode")
-
-        if device.get("modeSet") is not None:
-            result["mode_set"] = device.get("modeSet")
-
-        if device.get("buz") is not None:
-            result["buzzer"] = device.get("buz")
-
-        if device.get("chg") is not None:
-            result["battery_charging"] = device.get("chg")
-
-        if device.get("led") is not None:
-            result["led_status"] = device.get("led")
-
-        if device.get("search") is not None:
-            result["search"] = device.get("search")
-
-        if device.get("status") is not None:
-            result["status"] = device.get("status")
-
-        if device.get("home") is not None:
-            result["home"] = device.get("home")
-
-        if device.get("homeSince") is not None:
-            result["home_since"] = device.get("homeSince")
-
-        if device.get("searchModeDuration") is not None:
-            result["search_mode_duration"] = device.get("searchModeDuration")
-
-        if device.get("sw") is not None:
-            result["sw"] = device.get("sw")
-
-        if device.get("hw") is not None:
-            result["hw"] = device.get("hw")
-
+        # Only having details from the api not ws
         if details := device.get("details"):
             result["collar_colour"] = details.get("color", 0)
             result["cat_image"] = details.get("image", None)
@@ -441,48 +441,8 @@ class PetTracerApi:
         # Get latest FIFO data for most recent signal (only on initial load)
         try:
             device_info = await self.get_device_fifo(device_id)
-
-            if device_info and "fifo" in device_info:
-
-                fifo_data = device_info["fifo"]
-                # Extract signal and position from FIFO data
-                if isinstance(fifo_data, list) and len(fifo_data) > 0:
-                    latest = fifo_data[0]
-
-                    # Signal from receivedBy
-                    received_by = latest.get("receivedBy", [])
-                    if received_by:
-                        raw_rssi = received_by[0].get("rssi", 0)
-                        dbm = format_rssi(raw_rssi)
-                        percent = rssi_to_percent(dbm)
-
-                        result["rssi_raw"] = raw_rssi
-                        result["rssi_dbm"] = dbm
-                        result["signal_percent"] = percent
-                        result["signal_level"] = get_signal_level(percent)
-
-                    # Position from last position
-                    telegram = latest.get("telegram", {})
-                    if telegram:
-                        result["latitude"] = telegram.get("latitude")
-                        result["longitude"] = telegram.get("longitude")
-
-                        # Update timestamp
-                        if telegram.get("timeDb"):
-                            result["last_update"] = telegram["timeDb"]
-
-                        # Update satellites
-                        if telegram.get("sat"):
-                            result["satellites"] = telegram["sat"]
-
-                        # Update last position flag
-                        if telegram.get("flags"):
-                            result["last_position_flags"] = telegram["flags"]
-
-
-
-
-
+            if device_info and "fiFo" in device_info:
+                self._parse_collar_fifo(device_info['fiFo'], result)
 
         except Exception as err:
             _LOGGER.warning("Failed to get FIFO data for %s: %s", device_id, err)
@@ -662,8 +622,6 @@ class PetTracerApi:
             _LOGGER.warning("No devices to subscribe to")
             return
 
-
-        
         # Create JSON body
         body = json.dumps({"deviceIds": device_ids})
         
@@ -789,30 +747,11 @@ class PetTracerApi:
         # Update device cache
         if device_id in self._devices:
             device = self._devices[device_id]
-            
-            # Update location from lastPos
-            if "lastPos" in data:
-                last_pos = data["lastPos"]
-                device["lastPos"] = {
-                    "lat": last_pos.get("posLat"),
-                    "lng": last_pos.get("posLong"),
-                    "timeDb": last_pos.get("timeDb")
-                }
-                _LOGGER.info("Updated location for device %s", device_id)
-            
-            # Update signal from lastRssi
-            if "lastRssi" in data:
-                device["lastRssi"] = data["lastRssi"]
-                _LOGGER.info("Updated signal for device %s: %s dBm", device_id, data["lastRssi"])
-            
-            # Update battery from bat
-            if "bat" in data:
-                device["bat"] = data["bat"]
-                _LOGGER.info("Updated battery for device %s: %s", device_id, data["bat"])
+            self._parse_collar_json(data, device)
             
             # Update entire FIFO data if present
             if "fiFo" in data:
-                device["fifo"] = data["fiFo"]
+                self._parse_collar_fifo(data["fiFo"], device)
         
         # Notify callbacks
         self._notify_callbacks({
