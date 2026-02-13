@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN
+from .const import DOMAIN, COLLAR_MODES
 from .coordinator import PetTracerCoordinator
 from homeassistant.util import dt as dt_util
 
@@ -562,23 +562,7 @@ class PetTracerOperationModeSensor(PetTracerBaseSensor):
         self._attr_icon = "mdi:cog-outline"
 
     def _get_text_name(self, mode: int | None) -> str:
-        modes = {
-            1: "Fast", #"TM_FAST_1",
-            2: "Medium", #"TM_MEDIUM",
-            3: "Slow", #"TM_SLOW",
-            4: "Ultra Slow", #"TM_ULTRASLOW",
-            5: "Test", #"TM_TEST",
-            6: "Slow 3", #"TM_SLOW_3",
-            7: "Slow 4", #"TM_SLOW_4",
-            8: "Fast 2", #"TM_FAST_2",
-            10: "Battery Low", #"TM_BATLOW",
-            11: "Search mode", #"TM_SEARCH",
-            12: "Turned off (need activating)", #"TM_OFF",
-            14: "Normal 2", #"TM_NORMAL_2",
-            18: "Peil 3", #"TM_PEIL_3",
-            19: "Peil 4", #"TM_PEIL_4"
-        }
-        return modes.get(mode, "Unknown")
+        return COLLAR_MODES.get(mode, "Unknown")
 
     @property
     def native_value(self) -> str | None:

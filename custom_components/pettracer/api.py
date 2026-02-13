@@ -18,9 +18,12 @@ from .const import (
     ENDPOINT_LOGIN,
     ENDPOINT_CAT_COLLARS,
     ENDPOINT_CC_INFO,
+    ENDPOINT_HOME_STATIONS,
+    ENDPOINT_SET_MODE,
+    ENDPOINT_SET_LED_MODE,
+    ENDPOINT_SET_BUZZER_MODE,
     STOMP_QUEUE_MESSAGES,
-    STOMP_QUEUE_PORTAL,
-    ENDPOINT_HOME_STATIONS
+    STOMP_QUEUE_PORTAL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,6 +185,25 @@ class PetTracerApi:
             "Referer": "https://portal.pettracer.com/en/dashboard",
             "Host": "portal.pettracer.com"
         }
+
+    async def set_collar_mode(self, mode: int, device_id: int) -> bool:
+        """Set collar mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_CAT_COLLARS}",
+                    headers=self._get_auth_headers(),
+                    json={"devType": 0, "devId": device_id,"cmdNr": mode}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set cat mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
 
     async def get_cat_collars(self) -> dict[str, Any]:
         """Get cat collars info."""
