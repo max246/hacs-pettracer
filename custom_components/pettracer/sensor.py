@@ -799,7 +799,8 @@ class PetTracerSearchModeDurationSensor(PetTracerBaseSensor):
         """Return the search mode duration."""
         data = self._get_device_data()
         if data:
-            return  data.get("search_mode_duration")
+            # Avoid to print negative numbers when is not active
+            return  data.get("search_mode_duration") if data.get("mode") == 11 else 0
         return None
 
 class PetTracerLastUpdateSensor(PetTracerBaseSensor):
