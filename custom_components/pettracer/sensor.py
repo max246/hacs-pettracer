@@ -431,7 +431,7 @@ class PetTracerBatterySensor(PetTracerBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_battery"
-        self._attr_name = "Battery"
+        self._attr_name = "Battery Level"
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
