@@ -735,7 +735,7 @@ class PetTracerApi:
 
     async def _handle_device_update(self, data: dict[str, Any]) -> None:
         """Handle device update from STOMP message."""
-        _LOGGER.debug("Device update received: %s", json.dumps(data, indent=2))
+        _LOGGER.debug("Device update received from STOMP: %s", json.dumps(data, indent=2))
         
         # Extract device ID
         device_id = str(data.get("id", ""))
@@ -744,9 +744,11 @@ class PetTracerApi:
             _LOGGER.debug("No device ID in update")
             return
 
-
+        _LOGGER.debug(f"TEst** devices:{self._devices}")
+        _LOGGER.debug(f"TEst** is the device in? {device_id}  :{device_id in self._devices}")
         # Update device cache
         if device_id in self._devices:
+
             device = self._devices[device_id]
             _LOGGER.debug(f"Before parsed for WS:{device}")
             self._parse_collar_json(data, device)
