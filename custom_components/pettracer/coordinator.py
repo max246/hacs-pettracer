@@ -98,9 +98,6 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 self.data["collars"] = {device_id: device_data}
 
-
-            _LOGGER.debug(f"Data in the coordiantor:  {self.data}")
-
             self.devices["collars"][device_id] = device_data
 
             # Notify all listeners (sensors, device trackers) of the update

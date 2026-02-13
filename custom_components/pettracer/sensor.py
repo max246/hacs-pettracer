@@ -585,7 +585,12 @@ class PetTracerOperationModeSensor(PetTracerBaseSensor):
         """Return the software version."""
         data = self._get_device_data()
         if data:
-            return self._get_text_name(data.get("mode"))
+            current_mode = self._get_text_name(data.get("mode"))
+            if data.get("mode") != data.get("mode_set"):
+                future_mode = self._get_text_name(data.get("mode_set"))
+                return f"{current_mode} (Setting to {future_mode})"
+            else:
+                return current_mode
         return None
 
 class PetTracerCollarColourSensor(PetTracerBaseSensor):
@@ -784,6 +789,8 @@ class PetTracerSearchModeDurationSensor(PetTracerBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_search_mode_duration"
+        self._attr_native_unit_of_measurement = "min"
+        self._attr_device_class = SensorDeviceClass.DURATION
         self._attr_name = "Search mode duration"
         self._attr_icon = "mdi:timer-outline"
 
@@ -792,7 +799,8 @@ class PetTracerSearchModeDurationSensor(PetTracerBaseSensor):
         """Return the search mode duration."""
         data = self._get_device_data()
         if data:
-            return  data.get("search_mode_duration")
+            # Avoid to print negative numbers when is not active
+            return  data.get("search_mode_duration") if data.get("mode") == 11 else 0
         return None
 
 class PetTracerLastUpdateSensor(PetTracerBaseSensor):
