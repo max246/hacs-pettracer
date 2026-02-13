@@ -55,7 +55,7 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
 
         self._attr_unique_id = f"{device_id}_select_mode"
         self._attr_name = "Operation mode"
-        self._attr_options = COLLAR_MODES.values()
+        self._attr_options = list(COLLAR_MODES.values())
         current_mode = device_data.get("mode")
         self._attr_current_option = COLLAR_MODES.get(current_mode, "Unknown")
         self._attr_icon = "mdi:cog-outline"
