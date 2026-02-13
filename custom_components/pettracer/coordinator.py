@@ -73,6 +73,9 @@ class PetTracerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get data for a specific device."""
         return self.data.get(device_id) if self.data else None
 
+    def get_api(self) -> PetTracerApi:
+        return self.api
+
     async def start_websocket(self) -> None:
         """Start WebSocket connection for real-time updates."""
         try:

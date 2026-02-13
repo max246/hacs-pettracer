@@ -18,9 +18,12 @@ from .const import (
     ENDPOINT_LOGIN,
     ENDPOINT_CAT_COLLARS,
     ENDPOINT_CC_INFO,
+    ENDPOINT_HOME_STATIONS,
+    ENDPOINT_SET_MODE,
+    ENDPOINT_SET_LED_MODE,
+    ENDPOINT_SET_BUZZER_MODE,
     STOMP_QUEUE_MESSAGES,
-    STOMP_QUEUE_PORTAL,
-    ENDPOINT_HOME_STATIONS
+    STOMP_QUEUE_PORTAL
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,6 +185,63 @@ class PetTracerApi:
             "Referer": "https://portal.pettracer.com/en/dashboard",
             "Host": "portal.pettracer.com"
         }
+
+    async def set_collar_mode(self, mode: int, device_id: int) -> bool:
+        """Set collar mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_SET_MODE}",
+                    headers=self._get_auth_headers(),
+                    json={"devType": 0, "devId": device_id, "cmdNr": mode}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set cat mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
+
+    async def set_led_mode(self, mode: int, device_id: str) -> bool:
+        """Set led mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_SET_LED_MODE}/{device_id}/{mode}",
+                    headers=self._get_auth_headers(),
+                    json={}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set led mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
+
+    async def set_buzzer_mode(self, mode: int, device_id: str) -> bool:
+        """Set buzzer mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_SET_BUZZER_MODE}/{device_id}/{mode}",
+                    headers=self._get_auth_headers(),
+                    json={"devType": 0, "devId": device_id,"cmdNr": mode}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set buzzer mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
 
     async def get_cat_collars(self) -> dict[str, Any]:
         """Get cat collars info."""
@@ -380,23 +440,6 @@ class PetTracerApi:
         device = self._devices.get(device_id, {})
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
 
-        """
-            set leds: setCatCollarLEDUrl
-            set buz: setCatCollarBuzUrl
-            set collar mode: setCatCollarModeUrl
-                    JSON.stringify({
-                        devType: 0,
-                        devId: e,
-                        cmdNr: t
-                    }
-            position quality: fixP and fixS
-             
-            turn off the collar : https://portal.pettracer.com/api/map/setccmode
-                {"devType":0,"devId":23712,"cmdNr":12}
-
-        
-        
-        """
         result = {
             "device_id": device_id,
             "name": device_name,
@@ -407,6 +450,7 @@ class PetTracerApi:
             "latitude": None,
             "longitude": None,
             "battery_level": None,
+            "battery_charging": False,
             "last_update": None,
             "hw": None,
             "sw": None,
@@ -415,7 +459,6 @@ class PetTracerApi:
             "mode_set": None,
             "search_mode_duration": None,
             "led_status": False,
-            "battery_charging": False,
             "search": False,
             "status": None,
             "home": None,

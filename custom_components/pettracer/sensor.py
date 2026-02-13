@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from .const import DOMAIN
+from .const import DOMAIN, COLLAR_MODES
 from .coordinator import PetTracerCoordinator
 from homeassistant.util import dt as dt_util
 
@@ -58,6 +58,11 @@ async def async_setup_entry(
         entities.append(
             PetTracerBatteryVoltageSensor(coordinator, device_id, device_data)
         )
+        # Battery charging sensor
+        entities.append(
+            PetTracerBatteryChargingSensor(coordinator, device_id, device_data)
+        )
+
 
         # Software Version sensor
         entities.append(
@@ -409,7 +414,7 @@ class PetTracerBatteryVoltageSensor(PetTracerBaseSensor):
         data = self._get_device_data()
         if data:
             return {
-                ATTR_BATTERY_CHARGING: data.get("charging"),
+                ATTR_BATTERY_CHARGING: data.get("battery_charging"),
             }
         return {}
 
@@ -426,7 +431,7 @@ class PetTracerBatterySensor(PetTracerBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_battery"
-        self._attr_name = "Battery"
+        self._attr_name = "Battery Level"
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_device_class = SensorDeviceClass.BATTERY
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -478,7 +483,7 @@ class PetTracerBatterySensor(PetTracerBaseSensor):
         data = self._get_device_data()
         if data:
             return {
-                ATTR_BATTERY_CHARGING: data.get("charging"),
+                ATTR_BATTERY_CHARGING: data.get("battery_charging"),
             }
         return {}
 
@@ -562,23 +567,7 @@ class PetTracerOperationModeSensor(PetTracerBaseSensor):
         self._attr_icon = "mdi:cog-outline"
 
     def _get_text_name(self, mode: int | None) -> str:
-        modes = {
-            1: "Fast", #"TM_FAST_1",
-            2: "Medium", #"TM_MEDIUM",
-            3: "Slow", #"TM_SLOW",
-            4: "Ultra Slow", #"TM_ULTRASLOW",
-            5: "Test", #"TM_TEST",
-            6: "Slow 3", #"TM_SLOW_3",
-            7: "Slow 4", #"TM_SLOW_4",
-            8: "Fast 2", #"TM_FAST_2",
-            10: "Battery Low", #"TM_BATLOW",
-            11: "Search mode", #"TM_SEARCH",
-            12: "Turned off (need activating)", #"TM_OFF",
-            14: "Normal 2", #"TM_NORMAL_2",
-            18: "Peil 3", #"TM_PEIL_3",
-            19: "Peil 4", #"TM_PEIL_4"
-        }
-        return modes.get(mode, "Unknown")
+        return COLLAR_MODES.get(mode, "Unknown")
 
     @property
     def native_value(self) -> str | None:
@@ -831,3 +820,39 @@ class PetTracerLastUpdateSensor(PetTracerBaseSensor):
             except ValueError:
                 return None
         return None
+
+class PetTracerBatteryChargingSensor(PetTracerBaseSensor):
+    """Sensor for Battery Charging."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_last_update"
+        self._attr_name = "Battery"
+        self._attr_icon = "mdi:battery-charging-outline"
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = ["Discharging", "Charging", "Full", "Offline", "Unknown"]
+
+    @property
+    def native_value(self) -> str:
+        """Return the battery status."""
+        data = self._get_device_data()
+        if data:
+            mode = data.get("mode")
+            battery_charging = data.get("battery_charging")
+            battery_level = data.get("battery_level")
+            flags = data.get("last_position_flags")
+            if mode == 12: # Return Unknown
+                return "Offline"
+            else:
+                if battery_charging == 0: return "Discharging"
+                elif battery_charging == 1: return "Charging"
+                elif (2 & flags) > 0 and  battery_level > 4100: return "Full"
+                else: return "Unknown"
+        else:
+            return "Unknown"
