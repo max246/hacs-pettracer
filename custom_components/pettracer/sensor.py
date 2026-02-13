@@ -789,6 +789,8 @@ class PetTracerSearchModeDurationSensor(PetTracerBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_search_mode_duration"
+        self._attr_native_unit_of_measurement = "min"
+        self._attr_device_class = SensorDeviceClass.DURATION
         self._attr_name = "Search mode duration"
         self._attr_icon = "mdi:timer-outline"
 
