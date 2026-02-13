@@ -112,14 +112,14 @@ class PetTracerLEDSwitch(PetTracerBaseSwitch):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Send the 'Turn On' command to the API."""
-        success = True #await self.api.set_power_state(True)
+        success = await self.api.set_led_mode(1, self._device_id)
         if success:
             self._attr_is_on = True
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Send the 'Turn Off' command to the API."""
-        success = True #await self.api.set_power_state(False)
+        success = await self.api.set_led_mode(0, self._device_id)
         if success:
             self._attr_is_on = False
             self.async_write_ha_state()
@@ -142,14 +142,14 @@ class PetTracerBuzzerSwitch(PetTracerBaseSwitch):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Send the 'Turn On' command to the API."""
-        success = True #await self.api.set_power_state(True)
+        success = await self.api.set_buzzer_mode(1, self._device_id)
         if success:
             self._attr_is_on = True
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Send the 'Turn Off' command to the API."""
-        success = True #await self.api.set_power_state(False)
+        success = await self.api.set_buzzer_mode(1, self._device_id)
         if success:
             self._attr_is_on = False
             self.async_write_ha_state()

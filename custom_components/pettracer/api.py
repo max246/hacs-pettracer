@@ -193,13 +193,51 @@ class PetTracerApi:
 
         try:
             async with session.post(
-                    f"{API_URL}{ENDPOINT_CAT_COLLARS}",
+                    f"{API_URL}{ENDPOINT_SET_MODE}",
+                    headers=self._get_auth_headers(),
+                    json={"devType": 0, "devId": device_id, "cmdNr": mode}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set cat mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
+
+    async def set_led_mode(self, mode: int, device_id: str) -> bool:
+        """Set led mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_SET_LED_MODE}/{device_id}/{mode}",
+                    headers=self._get_auth_headers(),
+                    json={}
+            ) as response:
+                if response.status != 200:
+                    _LOGGER.debug(f"Error {response}")
+                    raise PetTracerApiError(f"Failed to set led mode to {mode}: {response.status}")
+                return True
+        except Exception as e:
+            _LOGGER.debug(f"Error {e}")
+            raise PetTracerApiError(f"Failure to retrieve collars")
+
+    async def set_buzzer_mode(self, mode: int, device_id: str) -> bool:
+        """Set buzzer mode."""
+        await self._ensure_authenticated()
+        session = await self._ensure_session()
+
+        try:
+            async with session.post(
+                    f"{API_URL}{ENDPOINT_SET_BUZZER_MODE}/{device_id}/{mode}",
                     headers=self._get_auth_headers(),
                     json={"devType": 0, "devId": device_id,"cmdNr": mode}
             ) as response:
                 if response.status != 200:
                     _LOGGER.debug(f"Error {response}")
-                    raise PetTracerApiError(f"Failed to set cat mode to {mode}: {response.status}")
+                    raise PetTracerApiError(f"Failed to set buzzer mode to {mode}: {response.status}")
                 return True
         except Exception as e:
             _LOGGER.debug(f"Error {e}")
