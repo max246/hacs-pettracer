@@ -748,16 +748,23 @@ class PetTracerApi:
         _LOGGER.debug(f"TEst** is the device in? {device_id}  :{device_id in self._devices}")
         # Update device cache
         if device_id in self._devices:
+            _LOGGER.debug(f"Before parsed for WS:{self._devices[device_id]}")
 
-            device = self._devices[device_id]
-            _LOGGER.debug(f"Before parsed for WS:{device}")
-            self._parse_collar_json(data, device)
-            
-            # Update entire FIFO data if present
-            if "fiFo" in data:
-                self._parse_collar_fifo(data["fiFo"], device)
+            for key in data.keys():
+                self._devices[device_id][key] = data[key]
 
-            _LOGGER.debug(f"After parsed for WS:{device}")
+            _LOGGER.debug(f"After parsed for WS:{self._devices[device_id]}")
+
+            #
+            # device = self._devices[device_id]
+            # _LOGGER.debug(f"Before parsed for WS:{device}")
+            # self._parse_collar_json(data, device)
+            #
+            # # Update entire FIFO data if present
+            # if "fiFo" in data:
+            #     self._parse_collar_fifo(data["fiFo"], device)
+            #
+            # _LOGGER.debug(f"After parsed for WS:{device}")
 
         # Notify callbacks
         self._notify_callbacks({
