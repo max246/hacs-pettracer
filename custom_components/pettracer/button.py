@@ -92,7 +92,7 @@ class PetTracerTurnOffButton(CoordinatorEntity[PetTracerCoordinator], ButtonEnti
     async def async_press(self) -> None:
         """Handle the button press."""
         # Turn off is mode 12
-        success = await self.api.set_buzzer_mode(12, self._device_id)
+        success = await self.api.set_collar_mode(12, int(self._device_id))
         if success:
             self._attr_available = False
             self.async_write_ha_state()
