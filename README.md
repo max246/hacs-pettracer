@@ -46,7 +46,7 @@ for Home Stations, displaying connectivity status and hardware versions through 
 | GPS Satellite        | Current GPS Satellite connected to the collar      | -       |
 | Operation Mode       | Current mode                                       | -       |
 | Search mode          | Current search mode                                | -       |
-| Search mode duration | Current search mode duration                       | -       |
+| Search mode duration | Current search mode duration until reset to normal | minutes |
 
 
 
