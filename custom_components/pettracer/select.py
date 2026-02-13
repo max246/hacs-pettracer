@@ -89,6 +89,12 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
             }
         return {}
 
+    @property
+    def current_option(self) -> str:
+        """Read the current mode from the coordinator data."""
+        current_mode = self.coordinator.data.get("mode")
+        return COLLAR_MODES.get(current_mode, "Unknown")
+
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option and call the API."""
         # 1. Call your API endpoint

@@ -93,11 +93,11 @@ class PetTracerTurnOffButton(CoordinatorEntity[PetTracerCoordinator], ButtonEnti
     def available(self) -> bool:
         """Return True if the device is not in 'Off' mode."""
         # Logic: If the current API mode is 12, the button is disabled
-        return self._current_mode != 12
+        data = self._get_device_data()
+        return data.get("mode") != 12
 
     async def async_press(self) -> None:
         """Handle the button press."""
         # Turn off is mode 12
         await self.api.set_collar_mode(12, int(self._device_id))
-        self.self._current_mode = 12
         self.async_write_ha_state()
