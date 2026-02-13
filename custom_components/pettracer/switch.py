@@ -71,6 +71,12 @@ class PetTracerBaseSwitch(CoordinatorEntity[PetTracerCoordinator], SwitchEntity)
             model="GPS Tracker",
         )
 
+    def _get_device_data(self) -> dict[str, Any] | None:
+        """Get current device data from coordinator."""
+        if self.coordinator.data["collars"]:
+            return self.coordinator.data["collars"].get(self._device_id)
+        return None
+
     @property
     def is_on(self) -> bool:
         """Return True if the switch is currently on."""

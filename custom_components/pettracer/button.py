@@ -1,4 +1,4 @@
-"""Select platform for PetTracer integration."""
+"""Button platform for PetTracer integration."""
 from __future__ import annotations
 
 import logging
@@ -7,7 +7,7 @@ from typing import Any
 from homeassistant.const import ATTR_SW_VERSION, ATTR_HW_VERSION
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -30,17 +30,18 @@ async def async_setup_entry(
     # Wait for first data fetch
     await coordinator.async_config_entry_first_refresh()
 
-    entities: list[SelectEntity] = []
+    entities: list[ButtonEntity] = []
     for device_id, device_data in coordinator.data["collars"].items():
         # Signal strength percentage sensor
         entities.append(
-            PetTracerModeSelector(coordinator, device_id, device_data)
+            PetTracerTurnOffButton(coordinator, device_id, device_data)
         )
 
     async_add_entities(entities)
 
 
-class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntity):
+
+class PetTracerTurnOffButton(CoordinatorEntity[PetTracerCoordinator], ButtonEntity):
     def __init__(self,
             coordinator: PetTracerCoordinator,
             device_id: str,
@@ -53,13 +54,12 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
         self._device_name = device_data.get("name", f"Tracker {device_id}")
         self._attr_has_entity_name = True
 
-        self._attr_unique_id = f"{device_id}_select_mode"
-        self._attr_name = "Operation mode"
-        self._attr_options = list(COLLAR_MODES.values())
+        self._attr_unique_id = f"{device_id}_turn_off"
+        self._attr_name = "Turn off the collar"
         current_mode = device_data.get("mode")
-        self._attr_current_option = COLLAR_MODES.get(current_mode, "Unknown")
         self._attr_icon = "mdi:cog-outline"
-        self._MODE_TO_INT  = {v: k for k, v in COLLAR_MODES.items()}
+        # check if the mode is on turned off , otherwise enable the button
+        self._attr_available = False if current_mode == 12 else True
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -89,13 +89,8 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
             }
         return {}
 
-    async def async_select_option(self, option: str) -> None:
-        """Update the current selected option and call the API."""
-        # 1. Call your API endpoint
-
-        success = await self.api.set_collar_mode(self._MODE_TO_INT.get(option), int(self._device_id))
-
-        if success:
-            # 2. Update the internal state if the API call worked
-            self._attr_current_option = option
-            self.async_write_ha_state()
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        # This calls your API endpoint once
+        #await self.api.send_ping()
+        pass
