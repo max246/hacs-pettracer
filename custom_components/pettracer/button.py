@@ -91,6 +91,8 @@ class PetTracerTurnOffButton(CoordinatorEntity[PetTracerCoordinator], ButtonEnti
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        # This calls your API endpoint once
-        #await self.api.send_ping()
-        pass
+        # Turn off is mode 12
+        success = await self.api.set_buzzer_mode(12, self._device_id)
+        if success:
+            self._attr_available = False
+            self.async_write_ha_state()
