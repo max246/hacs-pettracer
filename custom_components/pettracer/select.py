@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant.const import ATTR_SW_VERSION, ATTR_HW_VERSION
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.select import SelectEntity
@@ -44,9 +45,15 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
             coordinator: PetTracerCoordinator,
             device_id: str,
             device_data: dict[str, Any]):
-        self.coordinator = coordinator
+        """Initialize the select entity."""
+        super().__init__(coordinator)
+
         self.api = coordinator.get_api()
         self._device_id = device_id
+        self._device_name = device_data.get("name", f"Tracker {device_id}")
+        self._attr_has_entity_name = True
+
+        self._attr_unique_id = f"{device_id}_select_mode"
         self._attr_name = "Operation mode"
         self._attr_options = COLLAR_MODES.values()
         current_mode = device_data.get("mode")
@@ -63,6 +70,18 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
             manufacturer="PetTracer",
             model="GPS Tracker",
         )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional attributes."""
+        data = self._get_device_data()
+        if data:
+            return {
+                ATTR_SW_VERSION: data.get("rssi_dbm"),
+                ATTR_HW_VERSION: data.get("signal_level"),
+                "last_update": data.get("last_update"),
+            }
+        return {}
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option and call the API."""
