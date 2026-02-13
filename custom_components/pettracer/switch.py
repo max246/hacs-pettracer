@@ -107,7 +107,7 @@ class PetTracerLEDSwitch(PetTracerBaseSwitch):
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_set_led"
         self._attr_name = "LED Switch"
-        self._attr_icon = "mdi:flag"
+        self._attr_icon = "mdi:lightbulb-outline"
         self._attr_is_on = True if device_data.get("led_status") else False
 
     async def async_turn_on(self, **kwargs) -> None:
@@ -137,7 +137,7 @@ class PetTracerBuzzerSwitch(PetTracerBaseSwitch):
         super().__init__(coordinator, device_id, device_data)
         self._attr_unique_id = f"{device_id}_set_buzzer"
         self._attr_name = "Buzzer Switch"
-        self._attr_icon = "mdi:flag"
+        self._attr_icon = "mdi:bugle"
         self._attr_is_on = True if device_data.get("buzzer") else False
 
     async def async_turn_on(self, **kwargs) -> None:

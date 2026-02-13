@@ -440,23 +440,6 @@ class PetTracerApi:
         device = self._devices.get(device_id, {})
         device_name = device.get("details", {}).get("name", f"Tracker {device_id}")
 
-        """
-            set leds: setCatCollarLEDUrl
-            set buz: setCatCollarBuzUrl
-            set collar mode: setCatCollarModeUrl
-                    JSON.stringify({
-                        devType: 0,
-                        devId: e,
-                        cmdNr: t
-                    }
-            position quality: fixP and fixS
-             
-            turn off the collar : https://portal.pettracer.com/api/map/setccmode
-                {"devType":0,"devId":23712,"cmdNr":12}
-
-        
-        
-        """
         result = {
             "device_id": device_id,
             "name": device_name,
@@ -467,6 +450,7 @@ class PetTracerApi:
             "latitude": None,
             "longitude": None,
             "battery_level": None,
+            "battery_charging": False,
             "last_update": None,
             "hw": None,
             "sw": None,
@@ -475,7 +459,6 @@ class PetTracerApi:
             "mode_set": None,
             "search_mode_duration": None,
             "led_status": False,
-            "battery_charging": False,
             "search": False,
             "status": None,
             "home": None,

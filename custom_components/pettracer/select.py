@@ -101,11 +101,8 @@ class PetTracerModeSelector(CoordinatorEntity[PetTracerCoordinator], SelectEntit
 
     async def async_select_option(self, option: str) -> None:
         """Update the current selected option and call the API."""
-        # 1. Call your API endpoint
-
         success = await self.api.set_collar_mode(self._MODE_TO_INT.get(option), int(self._device_id))
 
         if success:
-            # 2. Update the internal state if the API call worked
             self._attr_current_option = option
             self.async_write_ha_state()

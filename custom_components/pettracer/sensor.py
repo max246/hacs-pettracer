@@ -58,6 +58,11 @@ async def async_setup_entry(
         entities.append(
             PetTracerBatteryVoltageSensor(coordinator, device_id, device_data)
         )
+        # Battery charging sensor
+        entities.append(
+            PetTracerBatteryChargingSensor(coordinator, device_id, device_data)
+        )
+
 
         # Software Version sensor
         entities.append(
@@ -409,7 +414,7 @@ class PetTracerBatteryVoltageSensor(PetTracerBaseSensor):
         data = self._get_device_data()
         if data:
             return {
-                ATTR_BATTERY_CHARGING: data.get("charging"),
+                ATTR_BATTERY_CHARGING: data.get("battery_charging"),
             }
         return {}
 
@@ -478,7 +483,7 @@ class PetTracerBatterySensor(PetTracerBaseSensor):
         data = self._get_device_data()
         if data:
             return {
-                ATTR_BATTERY_CHARGING: data.get("charging"),
+                ATTR_BATTERY_CHARGING: data.get("battery_charging"),
             }
         return {}
 
@@ -815,3 +820,39 @@ class PetTracerLastUpdateSensor(PetTracerBaseSensor):
             except ValueError:
                 return None
         return None
+
+class PetTracerBatteryChargingSensor(PetTracerBaseSensor):
+    """Sensor for Battery Charging."""
+
+    def __init__(
+            self,
+            coordinator: PetTracerCoordinator,
+            device_id: str,
+            device_data: dict[str, Any],
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id, device_data)
+        self._attr_unique_id = f"{device_id}_last_update"
+        self._attr_name = "Battery"
+        self._attr_icon = "mdi:battery-charging-outline"
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = ["Discharging", "Charging", "Full", "Offline", "Unknown"]
+
+    @property
+    def native_value(self) -> str:
+        """Return the battery status."""
+        data = self._get_device_data()
+        if data:
+            mode = data.get("mode")
+            battery_charging = data.get("battery_charging")
+            battery_level = data.get("battery_level")
+            flags = data.get("last_position_flags")
+            if mode == 12: # Return Unknown
+                return "Offline"
+            else:
+                if battery_charging == 0: return "Discharging"
+                elif battery_charging == 1: return "Charging"
+                elif (2 & flags) > 0 and  battery_level > 4100: return "Full"
+                else: return "Unknown"
+        else:
+            return "Unknown"

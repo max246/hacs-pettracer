@@ -57,7 +57,7 @@ class PetTracerTurnOffButton(CoordinatorEntity[PetTracerCoordinator], ButtonEnti
         self._attr_unique_id = f"{device_id}_turn_off"
         self._attr_name = "Turn off the collar"
         self._current_mode = device_data.get("mode")
-        self._attr_icon = "mdi:cog-outline"
+        self._attr_icon = "mdi:access-point-off"
 
         # check if the mode is on turned off , otherwise enable the button
 
