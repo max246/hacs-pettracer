@@ -585,7 +585,12 @@ class PetTracerOperationModeSensor(PetTracerBaseSensor):
         """Return the software version."""
         data = self._get_device_data()
         if data:
-            return self._get_text_name(data.get("mode"))
+            current_mode = self._get_text_name(data.get("mode"))
+            if data.get("mode") != data.get("mode_set"):
+                future_mode = self._get_text_name(data.get("mode_set"))
+                return f"{current_mode} (Setting to {future_mode})"
+            else:
+                return current_mode
         return None
 
 class PetTracerCollarColourSensor(PetTracerBaseSensor):
