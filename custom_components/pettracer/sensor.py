@@ -440,33 +440,17 @@ class PetTracerBatterySensor(PetTracerBaseSensor):
     def calculate_battery_percentage(self, voltage_mv: int) -> float:
         """
         Converts battery millivolts to a percentage (0-100).
-        Input range: 3000mV (0%) to 4150mV (100%).
+        Input range: 3580mV (0%) to 4150mV (100%).
         """
-        # Clamp the voltage between 3000 and 4150
-        voltage = max(3000, min(voltage_mv, 4150))
+        min_voltage = 3580
+        max_voltage = 4150
+        voltage = max(min_voltage, min(voltage_mv, max_voltage))
         _LOGGER.debug(f"Voltage in: {voltage_mv} and clamped {voltage}")
-        
-        if voltage >= 4000:
-            # Range: 4000 - 4150
-            percentage = (voltage - 4150) / 150 * 17 + 83
-        elif voltage >= 3900:
-            # Range: 3900 - 3999
-            percentage = (voltage - 3900) / 100 * 26 + 67
-        elif voltage >= 3840:
-            # Range: 3840 - 3899
-            percentage = (voltage - 3840) / 60 * 17 + 50
-        elif voltage >= 3760:
-            # Range: 3760 - 3839
-            percentage = (voltage - 3760) / 80 * 16 + 34
-        elif voltage >= 3600:
-            # Range: 3600 - 3759
-            percentage = (voltage - 3600) / 160 * 17 + 17
-        else:
-            # Below 3600
-            percentage = 0
+
+        percentage = (voltage - min_voltage) / (max_voltage - min_voltage) * 100
 
         _LOGGER.debug(f"Raw percentage: {percentage} and round {round(percentage)}")
-            
+
         return round(percentage)
 
     @property
