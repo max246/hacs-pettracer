@@ -397,6 +397,7 @@ class PetTracerApi:
             result["latitude"] = last_pos.get("posLat")
             result["longitude"] = last_pos.get("posLong")
             result["last_update"] = last_pos.get("timeDb")
+            result["satellites"] = last_pos.get("sat")
             _LOGGER.info("Updated location for device %s", result.get("device_id"))
 
         # Get signal from cached lastRssi (updated via WebSocket)
