@@ -91,6 +91,7 @@ class PetTracerApi:
         self._ws_task: asyncio.Task | None = None
         self._ws_running = False
         self._stomp_session_id: str | None = None
+        self._ws_ssl_context: ssl.SSLContext | None = None
 
         self._collar_key_map = {
             "battery_level": "bat",
@@ -588,6 +589,35 @@ class PetTracerApi:
             else:
                 reconnect_delay = 5
 
+    @staticmethod
+    def _build_ws_ssl_context() -> ssl.SSLContext:
+        """Build the SSL context for the realtime WebSocket connection.
+
+        pt.pettracer.com serves an incomplete TLS chain: it sends only the leaf
+        certificate, whose Let's Encrypt "YR2" intermediate is signed by the new
+        "ISRG Root YR" root that is not yet in standard trust stores. Browsers cope
+        via AIA fetching, but Python's TLS stack does not, so the default context
+        rejects the handshake and the real-time updates silently stop. The REST API
+        (portal.pettracer.com) is unaffected and keeps full verification.
+
+        ``ssl.create_default_context`` loads the system trust store from disk
+        (``load_default_certs`` / ``set_default_verify_paths``), which blocks the
+        event loop, so this runs in an executor thread.
+        """
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        return ssl_context
+
+    async def _get_ws_ssl_context(self) -> ssl.SSLContext:
+        """Return the cached WebSocket SSL context, building it off the loop."""
+        if self._ws_ssl_context is None:
+            loop = asyncio.get_running_loop()
+            self._ws_ssl_context = await loop.run_in_executor(
+                None, self._build_ws_ssl_context
+            )
+        return self._ws_ssl_context
+
     async def _websocket_handler(self) -> None:
         """Handle SockJS/STOMP WebSocket connection and messages."""
         # Generate random server ID (3 digits)
@@ -600,15 +630,7 @@ class PetTracerApi:
 
         _LOGGER.debug("Connecting to SockJS WebSocket: %s", ws_url.replace(self._token, "***"))
 
-        # pt.pettracer.com serves an incomplete TLS chain: it sends only the leaf
-        # certificate, whose Let's Encrypt "YR2" intermediate is signed by the new
-        # "ISRG Root YR" root that is not yet in standard trust stores. Browsers cope
-        # via AIA fetching, but Python's TLS stack does not, so the default context
-        # rejects the handshake and the real-time updates silently stop. The REST API
-        # (portal.pettracer.com) is unaffected and keeps full verification.
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
+        ssl_context = await self._get_ws_ssl_context()
 
         async with websockets.connect(ws_url, ssl=ssl_context) as websocket:
             self._ws = websocket
