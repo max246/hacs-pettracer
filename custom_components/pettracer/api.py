@@ -6,6 +6,7 @@ import json
 import logging
 import random
 import re
+import ssl
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
@@ -596,10 +597,20 @@ class PetTracerApi:
         
         # SockJS WebSocket URL: wss://host/sc/{server}/{session}/websocket?access_token=...
         ws_url = f"{WEBSOCKET_URL}/sc/{server_id}/{session_id}/websocket?access_token={self._token}"
-        
+
         _LOGGER.debug("Connecting to SockJS WebSocket: %s", ws_url.replace(self._token, "***"))
-        
-        async with websockets.connect(ws_url) as websocket:
+
+        # pt.pettracer.com serves an incomplete TLS chain: it sends only the leaf
+        # certificate, whose Let's Encrypt "YR2" intermediate is signed by the new
+        # "ISRG Root YR" root that is not yet in standard trust stores. Browsers cope
+        # via AIA fetching, but Python's TLS stack does not, so the default context
+        # rejects the handshake and the real-time updates silently stop. The REST API
+        # (portal.pettracer.com) is unaffected and keeps full verification.
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        async with websockets.connect(ws_url, ssl=ssl_context) as websocket:
             self._ws = websocket
             _LOGGER.info("SockJS WebSocket connected")
             
