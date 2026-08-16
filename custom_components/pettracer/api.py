@@ -89,6 +89,7 @@ class PetTracerApi:
         # WebSocket/SockJS/STOMP connection
         self._ws: websockets.WebSocketClientProtocol | None = None
         self._ws_task: asyncio.Task | None = None
+        self._ws_heartbeat_task: asyncio.Task | None = None
         self._ws_running = False
         self._stomp_session_id: str | None = None
         self._ws_ssl_context: ssl.SSLContext | None = None
@@ -545,7 +546,8 @@ class PetTracerApi:
     async def disconnect_websocket(self) -> None:
         """Disconnect from WebSocket."""
         self._ws_running = False
-        
+        self._stop_heartbeat()
+
         if self._ws:
             try:
                 await self._ws.close()
@@ -620,6 +622,10 @@ class PetTracerApi:
 
     async def _websocket_handler(self) -> None:
         """Handle SockJS/STOMP WebSocket connection and messages."""
+        # Re-authenticate on every (re)connect: the server closes sessions
+        # whose token has expired ("Session closed." STOMP ERROR).
+        await self._ensure_authenticated()
+
         # Generate random server ID (3 digits)
         server_id = random.randint(100, 999)
         # Generate random session ID (8 characters)
@@ -635,24 +641,61 @@ class PetTracerApi:
         async with websockets.connect(ws_url, ssl=ssl_context) as websocket:
             self._ws = websocket
             _LOGGER.info("SockJS WebSocket connected")
-            
-            # SockJS sends open frame: o
-            open_frame = await websocket.recv()
-            _LOGGER.debug("Received SockJS open frame: %s", open_frame)
-            
-            if open_frame != "o":
-                _LOGGER.warning("Unexpected SockJS open frame: %s", open_frame)
-                return
-            
-            # Send STOMP CONNECT frame
-            await self._send_stomp_connect(websocket)
-            
-            # Listen for messages
-            async for message in websocket:
-                try:
-                    await self._parse_sockjs_message(message)
-                except Exception as err:
-                    _LOGGER.error("Error parsing message: %s", err)
+
+            try:
+                # SockJS sends open frame: o
+                open_frame = await websocket.recv()
+                _LOGGER.debug("Received SockJS open frame: %s", open_frame)
+
+                if open_frame != "o":
+                    _LOGGER.warning("Unexpected SockJS open frame: %s", open_frame)
+                    return
+
+                # Send STOMP CONNECT frame
+                await self._send_stomp_connect(websocket)
+
+                # Listen for messages
+                async for message in websocket:
+                    try:
+                        await self._parse_sockjs_message(message)
+                    except PetTracerApiError:
+                        # Session-level error: tear down and reconnect
+                        raise
+                    except Exception as err:
+                        _LOGGER.error("Error parsing message: %s", err)
+            finally:
+                self._stop_heartbeat()
+                self._ws = None
+
+    def _start_heartbeat(self, websocket) -> None:
+        """Start sending STOMP heartbeats after a successful CONNECT."""
+        self._stop_heartbeat()
+        self._ws_heartbeat_task = asyncio.create_task(
+            self._stomp_heartbeat_loop(websocket)
+        )
+
+    def _stop_heartbeat(self) -> None:
+        """Stop the STOMP heartbeat task."""
+        if self._ws_heartbeat_task:
+            self._ws_heartbeat_task.cancel()
+            self._ws_heartbeat_task = None
+
+    async def _stomp_heartbeat_loop(self, websocket) -> None:
+        """Send STOMP heartbeats so the server keeps the session alive.
+
+        The CONNECT frame advertises heart-beat:10000,10000, so the server
+        expects a frame from us at least every 10 seconds and closes the
+        session ("Session closed." ERROR) if none arrive.
+        """
+        try:
+            while True:
+                await asyncio.sleep(9)
+                await websocket.send(json.dumps(["\n"]))
+                _LOGGER.debug("Sent STOMP heartbeat")
+        except asyncio.CancelledError:
+            raise
+        except Exception as err:
+            _LOGGER.debug("STOMP heartbeat stopped: %s", err)
 
     async def _send_stomp_connect(self, websocket) -> None:
         """Send STOMP CONNECT frame over SockJS."""
@@ -769,6 +812,7 @@ class PetTracerApi:
             _LOGGER.info("STOMP CONNECTED")
             # Subscribe to topics after connection
             if self._ws:
+                self._start_heartbeat(self._ws)
                 await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_MESSAGES, "sub-0")
                 await self._send_stomp_subscribe(self._ws, STOMP_QUEUE_PORTAL, "sub-1")
                 
@@ -809,6 +853,11 @@ class PetTracerApi:
         
         elif frame_str.startswith("ERROR"):
             _LOGGER.error("STOMP ERROR: %s", frame_str)
+            # The server killed the session (expired token, missed
+            # heartbeats, ...). Force a fresh login and reconnect instead of
+            # lingering on a dead session.
+            self._token = None
+            raise PetTracerApiError("STOMP session error, reconnecting")
 
     async def _handle_device_update(self, data: dict[str, Any]) -> None:
         """Handle device update from STOMP message."""
